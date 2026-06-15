@@ -29,22 +29,22 @@
   <div id="game-root" class="relative rounded-2xl overflow-hidden" style="width:832px;height:576px;">
     <div id="game-container" class="absolute inset-0"></div>
 
-    <!-- top-right utility buttons (crisp SVG, always visible) -->
-    <div class="absolute top-2 right-2 z-50 flex gap-2">
-      <button id="btn-mute" onclick="UI.toggleMute()" title="Mute (M)"
-              class="w-9 h-9 rounded-lg chip glow-btn flex items-center justify-center pointer-events-auto text-amber-200"></button>
-      <button id="btn-help" onclick="UI.openHelp()" title="How to play (H)"
-              class="w-9 h-9 rounded-lg chip glow-btn flex items-center justify-center pointer-events-auto text-amber-200"></button>
+    <!-- floating utility buttons — only shown when the HUD is hidden (menu / victory) -->
+    <div id="corner-btns" class="absolute top-2 right-2 z-50 flex gap-2">
+      <button onclick="UI.toggleMute()" title="Mute (M)"
+              class="btn-mute w-9 h-9 rounded-lg chip glow-btn flex items-center justify-center pointer-events-auto text-amber-200"></button>
+      <button onclick="UI.openHelp()" title="How to play (H)"
+              class="btn-help-ic w-9 h-9 rounded-lg chip glow-btn flex items-center justify-center pointer-events-auto text-amber-200"></button>
     </div>
 
     <!-- HUD -->
-    <div id="hud" class="hidden absolute top-0 left-0 right-0 z-20 items-center gap-3 px-3 py-2 bronze-frame">
-      <div class="flex flex-col leading-tight">
+    <div id="hud" class="hidden absolute top-0 left-0 right-0 z-20 items-center gap-2 px-3 py-1.5 bronze-frame">
+      <div class="flex flex-col leading-tight shrink-0">
         <span id="hud-act" class="text-amber-300 font-bold tracking-widest text-sm">ACT I</span>
         <span id="hud-moat" class="text-[11px] text-sky-300">Moat 0%</span>
       </div>
 
-      <div class="flex-1 mx-2">
+      <div class="flex-1 min-w-[90px] mx-1">
         <div class="flex items-center justify-between mb-0.5">
           <span class="text-[9px] text-stone-400 tracking-[0.2em]">DETECTION</span>
           <span id="alert-label" class="text-[10px] font-bold tracking-wider text-emerald-400">CLEAR</span>
@@ -54,21 +54,29 @@
         </div>
       </div>
 
-      <div id="hud-hp" class="text-base leading-none"></div>
-      <span class="chip rounded-md px-2 py-1 text-sm font-semibold flex items-center gap-1">
+      <div id="hud-hp" class="text-base leading-none shrink-0"></div>
+      <span class="chip rounded-md px-2 py-1 text-sm font-semibold flex items-center gap-1 shrink-0">
         <img id="ic-cowrie" class="ic" alt="cowries"><span id="ct-cowrie">0</span>
       </span>
-      <span class="chip rounded-md px-2 py-1 text-[13px] flex items-center gap-1.5">
+      <span class="chip rounded-md px-2 py-1 text-[13px] flex items-center gap-1.5 shrink-0">
         <img id="ic-coral" class="ic" alt="coral"><span id="ct-coral">0</span>
         <img id="ic-bronze" class="ic" alt="bronze"><span id="ct-bronze">0</span>
         <img id="ic-mudfish" class="ic" alt="mudfish"><span id="ct-mudfish">0</span>
       </span>
 
-      <div class="flex gap-1">
+      <div class="flex gap-1 shrink-0">
         <button onclick="window.__stealth&&window.__stealth.openForge()"
                 class="glow-btn px-2.5 py-1 rounded-md bg-amber-700/90 hover:bg-amber-600 text-stone-50 text-xs font-semibold">Forge</button>
         <button onclick="window.__stealth&&window.__stealth.openBuild()"
                 class="glow-btn px-2.5 py-1 rounded-md bg-sky-800/90 hover:bg-sky-700 text-stone-50 text-xs font-semibold">Moat</button>
+      </div>
+
+      <div class="w-px h-7 bg-amber-700/30 mx-0.5 shrink-0"></div>
+      <div class="flex gap-1 shrink-0">
+        <button onclick="UI.toggleMute()" title="Mute (M)"
+                class="btn-mute w-8 h-8 rounded-md chip glow-btn flex items-center justify-center text-amber-200"></button>
+        <button onclick="UI.openHelp()" title="How to play (H)"
+                class="btn-help-ic w-8 h-8 rounded-md chip glow-btn flex items-center justify-center text-amber-200"></button>
       </div>
     </div>
 
@@ -150,8 +158,10 @@
     const SVG_HELP      = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 4.5 2.6c-.9.6-1.6 1.2-1.6 2.4"/><circle cx="12" cy="17.5" r="0.6" fill="currentColor"/></svg>';
 
     const UI = {
-      showHUD(){ const h=document.getElementById('hud'); h.classList.remove('hidden'); h.classList.add('flex'); this.updateHUD(); },
-      hideHUD(){ const h=document.getElementById('hud'); h.classList.add('hidden'); h.classList.remove('flex'); },
+      showHUD(){ const h=document.getElementById('hud'); h.classList.remove('hidden'); h.classList.add('flex');
+                 document.getElementById('corner-btns').style.display='none'; this.updateHUD(); },
+      hideHUD(){ const h=document.getElementById('hud'); h.classList.add('hidden'); h.classList.remove('flex');
+                 document.getElementById('corner-btns').style.display='flex'; },
       showHelpButton(){},
 
       initIcons(textures){
@@ -230,14 +240,14 @@
       toggleMute(){
         if(!window.Sound) return;
         const muted=Sound.toggleMute();
-        document.getElementById('btn-mute').innerHTML = muted ? SVG_SOUND_OFF : SVG_SOUND_ON;
+        document.querySelectorAll('.btn-mute').forEach(b => b.innerHTML = muted ? SVG_SOUND_OFF : SVG_SOUND_ON);
       },
     };
     window.UI=UI;
 
     document.addEventListener('DOMContentLoaded',()=>{
-      document.getElementById('btn-mute').innerHTML = SVG_SOUND_ON;
-      document.getElementById('btn-help').innerHTML = SVG_HELP;
+      document.querySelectorAll('.btn-mute').forEach(b => b.innerHTML = SVG_SOUND_ON);
+      document.querySelectorAll('.btn-help-ic').forEach(b => b.innerHTML = SVG_HELP);
       document.getElementById('dialogue').addEventListener('click',()=>UI._dadvance());
       document.getElementById('forge-close').addEventListener('click',()=>window.Forge&&Forge.close());
 
