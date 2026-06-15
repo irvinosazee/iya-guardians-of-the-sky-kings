@@ -42,11 +42,8 @@ class MenuScene extends Phaser.Scene {
     this.continueText = this.add.text(width/2, height/2 + 104, '',
       { fontFamily:'Georgia', fontSize:'16px', color:'#7fd08a', resolution:RES }).setOrigin(0.5);
 
-    // controls bar — on its own dark strip so it's always readable
-    this.add.rectangle(width/2, height - 44, width - 80, 30, 0x000000, 0.55).setStrokeStyle(1, 0x5a4424);
-    this.add.text(width/2, height - 44,
-      'WASD / Arrows  ·  Move      Bushes  ·  Hide      F  ·  Forge      B  ·  Moat      H  ·  Help      M  ·  Mute',
-      { fontFamily:'monospace', fontSize:'12px', color:'#e8d6a8', resolution:RES }).setOrigin(0.5);
+    // controls bar — keycap badges
+    this.drawControlsBar(width, height - 42, RES);
 
     this.cameras.main.fadeIn(500, 0, 0, 0);
     this.input.keyboard.once('keydown-ENTER', () => this.begin());
@@ -64,6 +61,38 @@ class MenuScene extends Phaser.Scene {
         }
       });
     }
+  }
+
+  drawControlsBar(width, y, RES){
+    const items = [
+      { key:'WASD', label:'Move' },
+      { key:'F', label:'Forge' },
+      { key:'B', label:'Moat' },
+      { key:'Esc', label:'Pause' },
+      { key:'H', label:'Help' },
+      { key:'M', label:'Mute' },
+    ];
+    const keyH = 22;
+    const groups = items.map(it => {
+      const kw = Math.max(26, it.key.length * 9 + 14);
+      const lw = it.label.length * 7.5 + 4;
+      return { ...it, kw, lw, w: kw + 6 + lw };
+    });
+    const gap = 16;
+    const total = groups.reduce((s,g) => s + g.w, 0) + gap * (groups.length - 1);
+
+    this.add.rectangle(width/2, y, total + 36, 36, 0x000000, 0.5).setStrokeStyle(1, 0x6b4a22);
+    let x = width/2 - total/2;
+    groups.forEach(g => {
+      const cx = x + g.kw/2;
+      this.add.rectangle(cx, y, g.kw, keyH, 0x2a1c10).setStrokeStyle(1.5, 0xd9a441);
+      this.add.rectangle(cx, y - keyH/2 + 3, g.kw - 6, 3, 0xf0c040, 0.25);   // top highlight
+      this.add.text(cx, y - 1, g.key,
+        { fontFamily:'monospace', fontSize:'12px', color:'#f0c040', fontStyle:'bold', resolution:RES }).setOrigin(0.5);
+      this.add.text(x + g.kw + 6, y, g.label,
+        { fontFamily:'Georgia', fontSize:'13px', color:'#e8d6a8', resolution:RES }).setOrigin(0, 0.5);
+      x += g.w + gap;
+    });
   }
 
   begin(){

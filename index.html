@@ -76,11 +76,11 @@
       </div>
     </div>
 
-    <!-- Tutorial tip -->
-    <div id="tutorial-tip" class="hidden absolute top-20 left-1/2 -translate-x-1/2 z-30 items-center gap-3 px-4 py-2 rounded-xl bg-stone-900/95 ring-1 ring-amber-500/60" style="box-shadow:0 8px 30px rgba(0,0,0,.5)">
-      <span class="text-amber-300 text-lg">👁️</span>
-      <span id="tut-text" class="text-stone-50 text-sm"></span>
-      <button onclick="Tutorial.skip()" class="ml-2 text-[11px] text-stone-400 hover:text-amber-300 underline">skip</button>
+    <!-- Tutorial tip (slim, bottom of screen so it never blocks the action) -->
+    <div id="tutorial-tip" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3 py-1.5 rounded-full bg-stone-900/92 ring-1 ring-amber-500/50 max-w-[88%] whitespace-nowrap" style="box-shadow:0 6px 22px rgba(0,0,0,.5)">
+      <span class="text-amber-300 text-sm">👁️</span>
+      <span id="tut-text" class="text-stone-50 text-[12.5px]"></span>
+      <button onclick="Tutorial.skip()" class="ml-1 text-[11px] text-stone-400 hover:text-amber-300 underline shrink-0">skip</button>
     </div>
 
     <!-- Toast -->
