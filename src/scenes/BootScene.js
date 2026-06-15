@@ -8,6 +8,7 @@ class BootScene extends Phaser.Scene {
   create(){
     this.createProceduralAssets();
     if(window.UI && UI.initIcons) UI.initIcons(this.textures);  // populate HUD icons from generated art
+    if(window.Settings && window.Sound){ Sound.musicVol = Settings.musicVol; Sound.sfxVol = Settings.sfxVol; }
     this.scene.start('MenuScene');
   }
 
@@ -194,6 +195,11 @@ class BootScene extends Phaser.Scene {
       const g = c.createRadialGradient(128,128,60,128,128,150);
       g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(1,'rgba(255,255,255,1)');
       c.fillStyle = g; c.fillRect(0,0,256,256);
+    });
+    this.makeCanvas('arrow', 24, 24, (c) => {                 // objective locator (points +x)
+      c.fillStyle = '#f0c040';
+      c.beginPath(); c.moveTo(20,12); c.lineTo(7,5); c.lineTo(11,12); c.lineTo(7,19); c.closePath(); c.fill();
+      c.strokeStyle = '#7a5410'; c.lineWidth = 1.5; c.stroke();
     });
   }
 }

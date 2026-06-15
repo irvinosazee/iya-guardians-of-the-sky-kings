@@ -1,14 +1,16 @@
 /* ============================================================
- * Sound.js — procedural Web Audio sound engine.
- * Generates all SFX + an ambient drum bed in code, so the game
- * has audio with ZERO downloaded files. If you drop a real loop
- * at assets/audio/ambient.mp3 it is used instead automatically.
+ * Sound.js — procedural Web Audio engine with separate
+ * MUSIC and SFX buses (independent volume), plus mute.
+ * Drop a real loop at assets/audio/ambient.mp3 to override
+ * the procedural ambient bed automatically.
  * ============================================================ */
 class SoundFX {
   constructor(){
-    this.ctx = null; this.master = null; this.noiseBuf = null;
+    this.ctx = null; this.master = null; this.musicGain = null; this.sfxGain = null;
+    this.noiseBuf = null;
     this.muted = false; this.ambientOn = false; this.ambientTimer = null;
     this._ambientEl = null; this._triedFile = false;
+    this.musicVol = 0.5; this.sfxVol = 0.7;
   }
 
   ensure(){
@@ -16,10 +18,10 @@ class SoundFX {
     const AC = window.AudioContext || window.webkitAudioContext;
     if(!AC) return;
     this.ctx = new AC();
-    this.master = this.ctx.createGain();
-    this.master.gain.value = 0.5;
-    this.master.connect(this.ctx.destination);
-    const len = this.ctx.sampleRate * 1;
+    this.master = this.ctx.createGain(); this.master.gain.value = 1; this.master.connect(this.ctx.destination);
+    this.musicGain = this.ctx.createGain(); this.musicGain.gain.value = this.musicVol; this.musicGain.connect(this.master);
+    this.sfxGain = this.ctx.createGain();   this.sfxGain.gain.value = this.sfxVol;     this.sfxGain.connect(this.master);
+    const len = this.ctx.sampleRate;
     const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = buf.getChannelData(0);
     for(let i=0;i<len;i++) d[i] = Math.random()*2 - 1;
@@ -28,24 +30,25 @@ class SoundFX {
 
   resume(){ this.ensure(); if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
   get t(){ return this.ctx.currentTime; }
+  _bus(name){ return name === 'music' ? this.musicGain : this.sfxGain; }
 
-  tone(freq, dur, type='sine', vol=0.3, slideTo=null){
-    if(!this.ctx || this.muted) return;
+  tone(freq, dur, type='sine', vol=0.3, slideTo=null, bus='sfx'){
+    if(!this.ctx) return;
     const t = this.t, o = this.ctx.createOscillator(), g = this.ctx.createGain();
     o.type = type; o.frequency.setValueAtTime(freq, t);
     if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(vol, t + 0.012);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.02);
+    o.connect(g); g.connect(this._bus(bus)); o.start(t); o.stop(t + dur + 0.02);
   }
 
-  noise(dur, vol=0.3, freq=1000, type='lowpass'){
-    if(!this.ctx || this.muted) return;
+  noise(dur, vol=0.3, freq=1000, type='lowpass', bus='sfx'){
+    if(!this.ctx) return;
     const t = this.t, s = this.ctx.createBufferSource(), f = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
     s.buffer = this.noiseBuf; f.type = type; f.frequency.value = freq;
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f); f.connect(g); g.connect(this.master); s.start(t); s.stop(t + dur + 0.02);
+    s.connect(f); f.connect(g); g.connect(this._bus(bus)); s.start(t); s.stop(t + dur + 0.02);
   }
 
   // --- named SFX ---
@@ -58,13 +61,18 @@ class SoundFX {
   caught(){ this.tone(420, 0.55, 'sawtooth', 0.26, 80); this.noise(0.5, 0.18, 800, 'lowpass'); }
   victory(){ [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>this.tone(f, 0.32, 'sine', 0.24), i*150)); }
 
-  toggleMute(){
-    this.muted = !this.muted;
-    if(this.master) this.master.gain.value = this.muted ? 0 : 0.5;
-    if(this._ambientEl) this._ambientEl.muted = this.muted;
-    if(this.muted) this._stopProc(); else this.startAmbient();
+  // --- volumes ---
+  setMusicVolume(v){ this.musicVol = v; this.ensure(); if(this.musicGain) this.musicGain.gain.value = v; if(this._ambientEl) this._ambientEl.volume = v; }
+  setSfxVolume(v){ this.sfxVol = v; this.ensure(); if(this.sfxGain) this.sfxGain.gain.value = v; }
+
+  setMuted(m){
+    this.muted = m;
+    if(this.master) this.master.gain.value = m ? 0 : 1;
+    if(this._ambientEl) this._ambientEl.muted = m;
+    if(m) this._stopProc(); else this.startAmbient();
     return this.muted;
   }
+  toggleMute(){ return this.setMuted(!this.muted); }
 
   startAmbient(){
     this.ensure();
@@ -73,7 +81,7 @@ class SoundFX {
     if(!this._triedFile){
       this._triedFile = true;
       const a = new Audio('assets/audio/ambient.mp3');
-      a.loop = true; a.volume = 0.4;
+      a.loop = true; a.volume = this.musicVol;
       a.play().then(() => { this._ambientEl = a; this.ambientOn = true; })
               .catch(() => this._procAmbient());
       return;
@@ -88,8 +96,8 @@ class SoundFX {
     const pat = [1,0,0,1, 0,0,1,0];
     this.ambientTimer = setInterval(() => {
       if(!this.ambientOn) return;
-      if(pat[step % 8]) this.tone(110 + (step % 16 === 0 ? 22 : 0), 0.28, 'sine', 0.15, 70);
-      if(step % 8 === 4) this.noise(0.05, 0.05, 6000, 'highpass');
+      if(pat[step % 8]) this.tone(110 + (step % 16 === 0 ? 22 : 0), 0.28, 'sine', 0.5, 70, 'music');
+      if(step % 8 === 4) this.noise(0.05, 0.18, 6000, 'highpass', 'music');
       step++;
     }, 300);
   }

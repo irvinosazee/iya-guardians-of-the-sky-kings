@@ -9,6 +9,14 @@ class BuildScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.grid = new MoatGrid();
     this.waterTiles = {};
+    window.__buildOpen = true;
+
+    if(window.Settings && !Settings.moatSeen && window.UI){
+      Settings.moatSeen = true; Settings.save();
+      UI.infoModal('The Great Iya (Moat)',
+        'Dig the glowing ring of tiles with cowries (5 each). Seal the whole ring and the moat protects the city — fewer guards patrol at night, and a complete moat is required to win.',
+        () => {});
+    }
 
     const RES = window.DPR || 2;
     this.add.rectangle(0, 0, width, height, 0x0e0a05, 0.97).setOrigin(0);
@@ -99,6 +107,7 @@ class BuildScene extends Phaser.Scene {
 
   close(){
     if(window.Sound) Sound.click();
+    window.__buildOpen = false;
     this.scene.stop();
     this.scene.resume('StealthScene');
   }

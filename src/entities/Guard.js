@@ -26,12 +26,20 @@ class Guard extends Phaser.Physics.Arcade.Sprite {
     this.speed = 72; this.chaseSpeed = 116;
     this.visionRadius = 158; this.fov = Phaser.Math.DegToRad(64);
     this.hearingRadius = 95;
+    // base values so difficulty multipliers are non-cumulative
+    this.baseSpeed = this.speed; this.baseChase = this.chaseSpeed;
+    this.baseVision = this.visionRadius; this.baseFov = this.fov;
 
     this.state = 'calm';
     this.facing = 0;
     this.investigate = null;
     this.investTimer = 0;
     this._prevState = 'calm';
+
+    this.lastSeenPos = null;
+    this.seenMarker = scene.add.text(0, 0, '?', {
+      fontFamily:'Georgia', fontSize:'14px', fontStyle:'bold', color:'#f0c040', resolution:window.DPR||2
+    }).setOrigin(0.5).setDepth(7).setVisible(false);
   }
 
   update(dt){
@@ -72,6 +80,15 @@ class Guard extends Phaser.Physics.Arcade.Sprite {
   sync(){
     this.shadow.setPosition(this.x, this.y + 11);
     this.bubble.setPosition(this.x, this.y - 20);
+
+    // "last seen" marker where the guard breaks off to investigate
+    if(this.state === 'calm') this.lastSeenPos = null;
+    if(this.lastSeenPos && this.state !== 'calm'){
+      this.seenMarker.setVisible(true).setPosition(this.lastSeenPos.x, this.lastSeenPos.y - 4);
+    } else {
+      this.seenMarker.setVisible(false);
+    }
+
     const want = this.state === 'alert' ? '!' : this.state === 'suspicious' ? '?' : '';
     if(want !== this.bubble.text){
       this.bubble.setText(want);
@@ -116,6 +133,7 @@ class Guard extends Phaser.Physics.Arcade.Sprite {
   destroy(fromScene){
     if(this.shadow) this.shadow.destroy();
     if(this.bubble) this.bubble.destroy();
+    if(this.seenMarker) this.seenMarker.destroy();
     super.destroy(fromScene);
   }
 }

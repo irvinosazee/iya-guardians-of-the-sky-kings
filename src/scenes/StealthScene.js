@@ -36,13 +36,20 @@ class StealthScene extends Phaser.Scene {
     this.RATE_SEEN  = 0.058;
     this.RATE_HEARD = 0.020;
     this.RATE_DECAY = 0.045;
+    this._detectMul = 1;
+
+    // tutorial progress flags
+    this._everMoved = false; this._everHid = false; this._everPicked = false;
 
     this.buildLevel();
     this.createPlayer();
     this.createGuards();
     this.createLightingAndFX();
+    this.applyDifficulty();
+    this.createIndicators();
 
     this.coneGfx = this.add.graphics().setDepth(4);
+    this.noiseGfx = this.add.graphics().setDepth(4);
     this.setupInput();
 
     window.__stealth = this;
@@ -52,6 +59,9 @@ class StealthScene extends Phaser.Scene {
 
     this.cameras.main.fadeIn(400, 0, 0, 0);
     this.showActCard();
+    this.refreshObjective();
+    if(window.Tutorial && GameState.currentAct === 1) Tutorial.start();
+    else if(window.Tutorial) Tutorial.finish();
 
     this.events.on('resume', () => { this.uiPaused = false; UI.updateHUD(); });
     this.events.once('shutdown', () => { if(window.__stealth === this) window.__stealth = null; });
@@ -102,7 +112,7 @@ class StealthScene extends Phaser.Scene {
     [[12,2],[3,14]].forEach(p => place(p[0],p[1],'bronze','bronze'));
     [[23,8],[10,15]].forEach(p => place(p[0],p[1],'mudfish','mudfish'));
     [[22,3],[4,8],[13,15],[18,2],[8,12]].forEach(p => place(p[0],p[1],'cowrie','cowrie'));
-    place(12, 12, 'plan', 'plan');
+    this.planSprite = place(12, 12, 'plan', 'plan');
 
     // bushes
     this.bushRects = [];
@@ -156,7 +166,8 @@ class StealthScene extends Phaser.Scene {
 
   createLightingAndFX(){
     const T = this.T;
-    this.lighting = new Lighting(this, this.gridW*T, this.gridH*T, { darkness: 0.82 });
+    this.lighting = new Lighting(this, this.gridW*T, this.gridH*T,
+      { darkness: window.Settings ? Settings.darkness() : 0.82 });
     this.playerLight = this.lighting.addLight(this.player.x, this.player.y, 165, 7);
 
     // braziers + embers + light
@@ -199,20 +210,76 @@ class StealthScene extends Phaser.Scene {
       onComplete:()=>{ title.destroy(); sub.destroy(); } });
   }
 
+  applyDifficulty(){
+    const d = window.Settings ? Settings.difficultyParams() : { vision:1, fov:1, speed:1, detect:1 };
+    this._detectMul = d.detect;
+    this.guards.forEach(g => {
+      g.visionRadius = g.baseVision * d.vision;
+      g.fov         = g.baseFov * d.fov;
+      g.speed       = g.baseSpeed * d.speed;
+      g.chaseSpeed  = g.baseChase * d.speed;
+    });
+  }
+
+  createIndicators(){
+    this.locator = this.add.image(0, 0, 'arrow').setDepth(12).setVisible(false);
+    this.tweens.add({ targets:this.locator, alpha:{ from:0.55, to:1 }, duration:600, yoyo:true, repeat:-1 });
+    this.hiddenTag = this.add.text(0, 0, 'HIDDEN',
+      { fontFamily:'Georgia', fontSize:'11px', color:'#7fd08a', fontStyle:'bold', resolution:window.DPR||2 })
+      .setOrigin(0.5).setDepth(12).setVisible(false).setShadow(0,1,'#000',3,false,true);
+    this.dmgArrow = this.add.image(0, 0, 'arrow').setDepth(12).setTint(0xff3030).setScale(1.4).setVisible(false);
+  }
+
+  refreshObjective(){
+    if(!window.UI) return;
+    if(GameState.currentAct >= GameState.maxAct && this.objectiveTaken && !GameState.isMoatComplete())
+      UI.setObjective('Seal the Moat (press B), then reach the gate');
+    else if(!this.objectiveTaken)
+      UI.setObjective('Steal the construction plans (the scroll)');
+    else
+      UI.setObjective('Reach the glowing gate to escape');
+  }
+
+  updateIndicators(){
+    // locator arrow toward current target
+    let target = null;
+    if(!this.objectiveTaken && this.planSprite && this.planSprite.active) target = this.planSprite;
+    else if(this.objectiveTaken) target = this.exitSprite;
+    if(target){
+      const dx = target.x - this.player.x, dy = target.y - this.player.y;
+      const dist = Math.hypot(dx, dy);
+      if(dist > 72){
+        const a = Math.atan2(dy, dx);
+        this.locator.setVisible(true)
+          .setPosition(this.player.x + Math.cos(a)*46, this.player.y + Math.sin(a)*46).setRotation(a);
+      } else this.locator.setVisible(false);
+    } else this.locator.setVisible(false);
+
+    // hidden tag
+    if(this.player.hidden) this.hiddenTag.setVisible(true).setPosition(this.player.x, this.player.y - 22);
+    else this.hiddenTag.setVisible(false);
+  }
+
   setupInput(){
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D');
     this.input.keyboard.on('keydown-F', () => this.openForge());
     this.input.keyboard.on('keydown-B', () => this.openBuild());
     this.input.keyboard.on('keydown-H', () => window.UI && UI.openHelp());
-    this.input.keyboard.on('keydown-M', () => window.Sound && UI.toast(Sound.toggleMute() ? 'Muted' : 'Sound on'));
+    this.input.keyboard.on('keydown-M', () => window.UI && UI.toggleMute());
   }
 
   openForge(){
     if(this.uiPaused || this.complete) return;
     this.uiPaused = true; this.player.freeze();
     if(window.Sound) Sound.click();
-    Forge.open(() => { this.uiPaused = false; });
+    const openIt = () => Forge.open(() => { this.uiPaused = false; });
+    if(window.Settings && !Settings.forgeSeen){
+      Settings.forgeSeen = true; Settings.save();
+      UI.infoModal('The Artisan’s Forge',
+        'Spend the materials you gather to cast bronze plaques — each is a permanent upgrade: more health, quieter footsteps, or dashing through mud without slowing.',
+        openIt);
+    } else openIt();
   }
 
   openBuild(){
@@ -242,6 +309,7 @@ class StealthScene extends Phaser.Scene {
   /* ---------------- gameplay ---------------- */
   collect(player, item){
     const x = item.x, y = item.y;
+    this._everPicked = true;
     switch(item.itemType){
       case 'cowrie':  GameState.cowries += 5;        this.popText(x,y,'+5 cowries','#fff7e2'); break;
       case 'coral':   GameState.materials.coral++;   this.popText(x,y,'Coral +1','#ff8a78'); break;
@@ -251,6 +319,7 @@ class StealthScene extends Phaser.Scene {
         this.objectiveTaken = true;
         this.popText(x,y,'PLANS STOLEN!','#f0c040');
         UI.toast('Plans stolen — reach the glowing gate →');
+        this.refreshObjective();
         break;
     }
     this.burst(x, y, item.itemType === 'plan' ? 0xf0c040 : 0xffe080);
@@ -278,6 +347,20 @@ class StealthScene extends Phaser.Scene {
     this.player.setAlpha(this.player.hidden ? 0.5 : 1);
     this.player.sync();
 
+    if(this.player.moving) this._everMoved = true;
+    if(this.player.hidden) this._everHid = true;
+    if(window.Tutorial) Tutorial.update(this);
+    this.updateIndicators();
+
+    // noise ring — visualises how far footsteps carry (shrinks with the Leopard plaque)
+    this.noiseGfx.clear();
+    if(this.player.moving){
+      const r = 95 * GameState.noiseMultiplier;
+      const a = 0.14 + 0.06 * Math.sin(time / 120);
+      this.noiseGfx.lineStyle(2, 0xffffff, a);
+      this.noiseGfx.strokeCircle(this.player.x, this.player.y, r);
+    }
+
     // footsteps (sound + dust)
     if(this.player.moving && time - this._lastStep > 270){
       this._lastStep = time;
@@ -288,14 +371,14 @@ class StealthScene extends Phaser.Scene {
     let anySeen = false, anyHeard = false;
     this.guards.forEach(g => {
       const res = g.perceive(this.player, this.wallRects, this.player.hidden, GameState.noiseMultiplier);
-      if(res.seen){ anySeen = true; g.state = 'alert'; g.investigate = { x: px, y: py }; }
-      else if(res.heard && g.state === 'calm'){ g.state = 'suspicious'; g.investTimer = 1200; }
+      if(res.seen){ anySeen = true; g.state = 'alert'; g.investigate = { x: px, y: py }; g.lastSeenPos = { x: px, y: py }; }
+      else if(res.heard && g.state === 'calm'){ g.state = 'suspicious'; g.investTimer = 1200; g.lastSeenPos = { x: px, y: py }; }
       if(res.heard) anyHeard = true;
       g.update(delta);
     });
 
-    if(anySeen)       this.detection += delta * this.RATE_SEEN;
-    else if(anyHeard) this.detection += delta * this.RATE_HEARD;
+    if(anySeen)       this.detection += delta * this.RATE_SEEN  * this._detectMul;
+    else if(anyHeard) this.detection += delta * this.RATE_HEARD * this._detectMul;
     else              this.detection -= delta * this.RATE_DECAY;
     this.detection = Phaser.Math.Clamp(this.detection, 0, 100);
     if(this.detection >= 100) this.onCaught();
@@ -307,8 +390,9 @@ class StealthScene extends Phaser.Scene {
       this.lighting.move(this.playerLight, this.player.x, this.player.y);
       this.lighting.update(time);
     }
-    const pulse = this.detection > 70 ? (0.12 * (0.5 + 0.5*Math.sin(time/120))) : 0;
-    this.vignette.setAlpha((this.detection / 100) * 0.45 + pulse);
+    const reduce = window.Settings && Settings.reduceMotion;
+    const pulse = (!reduce && this.detection > 70) ? (0.12 * (0.5 + 0.5*Math.sin(time/120))) : 0;
+    this.vignette.setAlpha((this.detection / 100) * (reduce ? 0.3 : 0.45) + pulse);
 
     UI.setAlert(this.detection);
     if(time - this.lastHudTick > 250){ UI.updateHUD(); this.lastHudTick = time; }
@@ -324,9 +408,20 @@ class StealthScene extends Phaser.Scene {
     GameState.hp--;
     UI.updateHUD();
     if(window.autosave) autosave();
-    this.cameras.main.shake(260, 0.012);
-    this.cameras.main.flash(260, 140, 0, 0);
+
+    const reduce = window.Settings && Settings.reduceMotion;
+    if(!reduce){ this.cameras.main.shake(260, 0.012); this.cameras.main.flash(260, 140, 0, 0); }
     if(window.Sound) Sound.caught();
+
+    // directional indicator toward whoever caught you
+    const seer = this.guards.find(g => g.state === 'alert') || this.guards[0];
+    if(seer && this.dmgArrow){
+      const a = Phaser.Math.Angle.Between(this.player.x, this.player.y, seer.x, seer.y);
+      this.dmgArrow.setVisible(true).setAlpha(1).setRotation(a)
+        .setPosition(this.player.x + Math.cos(a)*42, this.player.y + Math.sin(a)*42);
+      this.tweens.add({ targets:this.dmgArrow, alpha:0, duration:750, onComplete:()=>this.dmgArrow.setVisible(false) });
+    }
+
     this.guards.forEach(g => { g.state = 'calm'; g.investigate = null; g.investTimer = 0; });
 
     if(GameState.hp <= 0){
@@ -373,6 +468,7 @@ class StealthScene extends Phaser.Scene {
           const T = this.T;
           this.player.setPosition(22*T + T/2, 4*T + T/2);
           this.complete = false;
+          this.refreshObjective();
         });
       }
       return;
