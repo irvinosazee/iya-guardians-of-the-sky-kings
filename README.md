@@ -1,71 +1,62 @@
 # Iya: Guardians of the Sky-Kings
 
-A top-down stealth + crafting + city-builder game set in 15th-century Benin City
-(*Igodomigodo*), during the reign of Oba Ewuare. Built with **Phaser 3** and
-**Tailwind CSS**. You play **Adesua**, a royal bronze caster who must steal
-construction plans, forge bronze plaques, and dig the Great Iya moat to guard the
-Oba from the Ogiso loyalists.
+A stealth game set in 15th-century Benin City (*Igodomigodo*), during the reign of
+Oba Ewuare. You play **Adesua**, a royal bronze caster: sneak past leopard-cultist
+guards, **forge** bronze plaques that upgrade you, and dig the **Great Iya moat** to
+guard the Oba across three acts.
 
-## How to run
+This repo ships **two versions** that share the same game logic:
 
-**Just double-click `index.html`** — it runs in any modern browser with no build
-step and no local server (scripts are loaded as ordered `<script>` tags, not ES
-modules, so `file://` works). An internet connection is needed the first time to
-pull Phaser + Tailwind from their CDNs.
+| Version | Location | Tech |
+|---------|----------|------|
+| **3D** (third-person) — the main game | `/` (repo root) | Three.js (WebGL) |
+| **Classic 2D** (top-down) | `/2d/` | Phaser 3 |
 
-Optional (nicer): serve it locally —
+## Run locally
+
+Just **double-click `index.html`** (3D) or **`2d/index.html`** (classic). Both run with
+no build step and no local server — scripts load as ordered `<script>` tags. An internet
+connection is needed on first load to pull Three.js / Phaser / Tailwind from their CDNs.
+
+Optional local server:
 ```bash
-cd "SEN 408/iya"
-python3 -m http.server 8000
-# open http://localhost:8000
+python3 -m http.server 8000   # then open http://localhost:8000
 ```
 
-## Controls
+## Controls (3D)
 
-| Key | Action |
-|-----|--------|
-| **WASD / Arrows** | Move Adesua |
-| **F** | Open the Forge (crafting) |
-| **B** | Open the Moat builder |
-| **ESC** | Close the Moat builder |
-| Stand in a **bush** | Hide (breaks guard line-of-sight) |
+| Input | Action |
+|-------|--------|
+| **WASD** | Move (camera-relative) |
+| **Mouse drag** | Orbit the camera · **Scroll** zoom · **Arrows** rotate |
+| **Shift** | Sprint (fast, loud) · **C** Crouch (slow, quiet) |
+| **E** | Throw a distraction |
+| **F** / **B** | Forge / Moat · **Esc** Pause · **H** Help · **M** Mute |
+| Stand in a **bush** | Hide (breaks line of sight) |
 
-## The game loop
+## The loop
 
-1. **Stealth** — sneak past patrolling guards, grab materials + cowries, steal the
-   plans, and reach the gate. Getting fully detected costs health.
-2. **Forge (F)** — spend materials on bronze plaques that buff you: more health
-   (coral), −35% noise (leopard), and mud-dash (mudfish).
-3. **Moat (B)** — spend cowries to dig the ring-shaped Iya. A sealed moat thins out
-   night patrols — and is required for the final victory in Act III.
+**Steal** materials + cowries in the night → **Forge** plaques (more health, quieter
+steps, mud-dash) → spend cowries to dig the **Moat** (thins out patrols). Clear all
+three acts **and** seal the moat to win. Progress auto-saves (IndexedDB).
 
-Earn in stealth → spend in Forge/Moat → stealth gets easier → win.
+## Deploy (Vercel)
 
-## Architecture (for the write-up)
+Static, zero-config. Import the repo in Vercel (framework preset **Other**, no build
+command, output dir `.`). After deploy:
+
+- `/` → 3D game · `/2d/` → classic 2D game
+- Replace `YOUR-PROJECT.vercel.app` in `robots.txt` and `sitemap.xml` with your domain.
+- For guaranteed social previews, switch the `og:image` paths to absolute URLs.
+
+## Structure
 
 ```
-index.html            UI helper + Tailwind overlays (HUD, dialogue, forge)
-src/state.js          Global game state: resources, tech tree, story, moat
-src/main.js           Phaser config + scene routing
-src/entities/
-  Player.js           Movement + stealth state (hidden / noise)
-  Guard.js            Patrol AI, vision cone, raycast LOS, calm→suspicious→alert FSM
-  MoatGrid.js         Moat grid view-model
-src/scenes/
-  BootScene.js        Procedural canvas texture generation (no image files needed)
-  MenuScene.js        Title + Act I narrative
-  StealthScene.js     Core gameplay loop
-  ForgeScene.js       Crafting (Tailwind DOM overlay)
-  BuildScene.js       16×16 moat construction grid
-  VictoryScene.js     End screen
+index.html            3D game (Three.js)
+src/                  3D engine, entities, game loop, UI
+2d/index.html         classic 2D game (Phaser)
+2d/src/               2D scenes, entities, managers
+assets/brand/         favicons, Open Graph image, web manifest
+docs/                 design specs
+vercel.json           static deploy config (cleanUrls + asset caching)
 ```
-
-### Concepts demonstrated
-- **AI vision & detection:** distance + field-of-view check, then a
-  `Line → Rectangle` raycast against wall geometry for true line-of-sight.
-- **Finite state machine:** each guard runs `calm → suspicious → alert`.
-- **Arcade physics:** velocity-based movement, collision, overlap triggers.
-- **Scene management:** boot/menu/gameplay routing, plus overlay scenes via
-  `launch` + `pause`/`resume`.
-- **State-driven progression:** a single global state object ties stealth rewards
-  to crafting buffs and moat safety.

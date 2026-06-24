@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iya: Guardians of the Sky-Kings — a Benin City stealth game</title>
+
+  <!-- ===== SEO / Social ===== -->
+  <meta name="description" content="Iya: Guardians of the Sky-Kings — a stealth game set in 15th-century Benin City. Play Adesua, a royal bronze caster: evade leopard-cultist guards, forge bronze plaques, and dig the Great Iya moat to guard Oba Ewuare." />
+  <meta name="author" content="Irvin Osazee" />
+  <meta name="theme-color" content="#0c0805" />
+  <meta name="keywords" content="Iya, Benin City, stealth game, Phaser, Oba Ewuare, Adesua, web game" />
+  <!-- favicons -->
+  <link rel="icon" href="../assets/brand/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/svg+xml" href="../assets/brand/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/brand/icon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="../assets/brand/icon-16.png" />
+  <link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png" />
+  <link rel="manifest" href="../assets/brand/site.webmanifest" />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Iya: Guardians of the Sky-Kings" />
+  <meta property="og:description" content="A stealth game set in 15th-century Benin City. Evade guards, forge bronze plaques, and dig the Great Iya moat." />
+  <meta property="og:image" content="../assets/brand/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:site_name" content="Iya: Guardians of the Sky-Kings" />
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Iya: Guardians of the Sky-Kings" />
+  <meta name="twitter:description" content="A stealth game set in 15th-century Benin City." />
+  <meta name="twitter:image" content="../assets/brand/og.png" />
+
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body{ background: radial-gradient(circle at 50% 0%, #2a1a10 0%, #0c0805 60%), #0c0805; font-family: Georgia, 'Times New Roman', serif; }
+    #game-container canvas{ display:block; }
+    #game-root{ box-shadow: 0 18px 60px rgba(0,0,0,.7), 0 0 0 2px rgba(240,192,64,.18), inset 0 0 80px rgba(0,0,0,.5); }
+    .bronze-frame{ background:linear-gradient(180deg, rgba(16,10,5,.96), rgba(16,10,5,.6)); border-bottom:1px solid rgba(240,192,64,.18); }
+    .chip{ background:rgba(20,13,7,.8); border:1px solid rgba(240,192,64,.28); }
+    .glow-btn{ transition:all .15s ease; }
+    .glow-btn:hover{ transform:translateY(-1px); box-shadow:0 4px 14px rgba(240,192,64,.3); }
+    .ic{ width:18px; height:18px; filter:drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
+    .menu-btn{ transition:all .15s ease; }
+    .menu-btn:hover{ background:rgba(240,192,64,.16); transform:translateX(2px); }
+    input[type=range]{ accent-color:#d9a441; }
+    @keyframes pop{ 0%{transform:scale(.6);opacity:0} 100%{transform:scale(1);opacity:1} }
+    .pop{ animation:pop .25s ease-out; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center text-stone-100 select-none">
+
+  <div id="game-root" class="relative rounded-2xl overflow-hidden" style="width:832px;height:576px;">
+    <div id="game-container" class="absolute inset-0"></div>
+
+    <!-- floating utility buttons — shown when HUD is hidden (menu / victory) -->
+    <div id="corner-btns" class="absolute top-2 right-2 z-50 flex gap-2">
+      <button onclick="UI.toggleMute()" title="Mute (M)" class="btn-mute w-9 h-9 rounded-lg chip glow-btn flex items-center justify-center pointer-events-auto text-amber-200"></button>
+      <button onclick="UI.openSettings(false)" title="Settings" class="btn-gear w-9 h-9 rounded-lg chip glow-btn flex items-center justify-center pointer-events-auto text-amber-200"></button>
+      <button onclick="UI.openHelp()" title="How to play (H)" class="btn-help-ic w-9 h-9 rounded-lg chip glow-btn flex items-center justify-center pointer-events-auto text-amber-200"></button>
+    </div>
+
+    <!-- HUD (two-tier) -->
+    <div id="hud" class="hidden absolute top-0 left-0 right-0 z-20 flex-col bronze-frame px-3 py-1.5 gap-1">
+      <div class="flex items-center gap-2">
+        <span id="hud-act" class="text-amber-300 font-bold tracking-widest text-sm shrink-0">ACT I</span>
+        <div class="flex-1 min-w-[100px] mx-1">
+          <div class="flex items-center justify-between mb-0.5">
+            <span class="text-[9px] text-stone-400 tracking-[0.2em]">DETECTION</span>
+            <span id="alert-label" class="text-[10px] font-bold tracking-wider text-emerald-400">CLEAR</span>
+          </div>
+          <div class="h-2.5 w-full bg-black/50 rounded-full overflow-hidden ring-1 ring-black/60">
+            <div id="alert-fill" class="h-full rounded-full transition-[width] duration-100" style="width:0%;background:#40e070;"></div>
+          </div>
+        </div>
+        <div id="hud-hp" class="text-base leading-none shrink-0" title="Health — coral beads"></div>
+        <span class="chip rounded-md px-2 py-1 text-sm font-semibold flex items-center gap-1 shrink-0" title="Cowrie shells (currency)">
+          <img id="ic-cowrie" class="ic" alt="cowries"><span id="ct-cowrie">0</span>
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span id="hud-objective" class="flex-1 truncate text-[13px] text-amber-100">► Objective: —</span>
+        <span class="chip rounded-md px-2 py-0.5 text-[13px] flex items-center gap-1.5 shrink-0" title="Crafting materials">
+          <img id="ic-coral" class="ic" alt="coral"><span id="ct-coral">0</span>
+          <img id="ic-bronze" class="ic" alt="bronze"><span id="ct-bronze">0</span>
+          <img id="ic-mudfish" class="ic" alt="mudfish"><span id="ct-mudfish">0</span>
+        </span>
+        <span id="hud-moat" class="text-[12px] text-sky-300 shrink-0" title="Moat completion">Moat 0%</span>
+        <div class="flex gap-1 shrink-0">
+          <button onclick="window.__stealth&&window.__stealth.openForge()" class="glow-btn px-2.5 py-1 rounded-md bg-amber-700/90 hover:bg-amber-600 text-stone-50 text-xs font-semibold">Forge</button>
+          <button onclick="window.__stealth&&window.__stealth.openBuild()" class="glow-btn px-2.5 py-1 rounded-md bg-sky-800/90 hover:bg-sky-700 text-stone-50 text-xs font-semibold">Moat</button>
+        </div>
+        <div class="w-px h-6 bg-amber-700/30 shrink-0"></div>
+        <div class="flex gap-1 shrink-0">
+          <button onclick="UI.toggleMute()" title="Mute (M)" class="btn-mute w-7 h-7 rounded-md chip glow-btn flex items-center justify-center text-amber-200"></button>
+          <button onclick="UI.openSettings(false)" title="Settings" class="btn-gear w-7 h-7 rounded-md chip glow-btn flex items-center justify-center text-amber-200"></button>
+          <button onclick="UI.openHelp()" title="How to play (H)" class="btn-help-ic w-7 h-7 rounded-md chip glow-btn flex items-center justify-center text-amber-200"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tutorial tip (slim, bottom of screen so it never blocks the action) -->
+    <div id="tutorial-tip" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3 py-1.5 rounded-full bg-stone-900/92 ring-1 ring-amber-500/50 max-w-[88%] whitespace-nowrap" style="box-shadow:0 6px 22px rgba(0,0,0,.5)">
+      <span class="text-amber-300 text-sm">👁️</span>
+      <span id="tut-text" class="text-stone-50 text-[12.5px]"></span>
+      <button onclick="Tutorial.skip()" class="ml-1 text-[11px] text-stone-400 hover:text-amber-300 underline shrink-0">skip</button>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-lg bg-black/85 text-amber-200 text-sm opacity-0 transition-opacity duration-300 ring-1 ring-amber-600/40 pointer-events-none max-w-[90%] text-center"></div>
+
+    <!-- Dialogue -->
+    <div id="dialogue" class="hidden absolute inset-0 z-40 flex-col justify-end bg-gradient-to-t from-black/85 via-black/35 to-transparent cursor-pointer">
+      <div class="m-4 mb-6 p-5 rounded-2xl bg-stone-900/97 ring-1 ring-amber-600/50 flex gap-4 items-start" style="box-shadow:0 12px 44px rgba(0,0,0,.65)">
+        <div id="dlg-portrait" class="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-4xl ring-2" style="background:#3a2a18;">🧓</div>
+        <div class="flex-1">
+          <div id="dlg-speaker" class="text-amber-300 font-bold mb-1.5 tracking-wide text-lg">Speaker</div>
+          <div id="dlg-text" class="text-stone-50 text-[17px] leading-7 min-h-[3.5rem]">...</div>
+          <div class="text-right text-xs text-amber-200/70 mt-2">▸ click or press Enter to continue</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Forge -->
+    <div id="forge-overlay" class="hidden absolute inset-0 z-40 flex-col bg-stone-950/97 p-5">
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="text-2xl text-amber-300 font-bold">The Artisan's Forge</h2>
+        <button id="forge-close" class="glow-btn px-3 py-1 rounded-md bg-stone-700 hover:bg-stone-600 text-sm">⟵ Back to the night</button>
+      </div>
+      <p class="text-stone-300 text-sm mb-1">Cast collected materials into bronze plaques. Each grants a permanent gift.</p>
+      <div id="forge-mats" class="text-amber-200 text-sm mb-4 font-mono"></div>
+      <div id="forge-cards" class="grid grid-cols-3 gap-4 flex-1"></div>
+    </div>
+
+    <!-- How to Play -->
+    <div id="help-overlay" class="hidden absolute inset-0 z-50 flex-col bg-stone-950/98 p-6 overflow-auto">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-2xl text-amber-300 font-bold">How to Play</h2>
+        <button onclick="UI.closeHelp()" class="glow-btn px-3 py-1 rounded-md bg-stone-700 hover:bg-stone-600 text-sm">✕ Close</button>
+      </div>
+      <div class="grid grid-cols-2 gap-5 text-[15px] text-stone-100">
+        <div class="chip rounded-xl p-4"><h3 class="text-amber-300 font-semibold mb-2 text-lg">The story</h3><p class="leading-relaxed text-stone-200">You are <b>Adesua</b>, a royal bronze caster in 15th-century Benin City. Sneak through the palace at night, steal the assassins' plans, and protect Oba Ewuare across three acts.</p></div>
+        <div class="chip rounded-xl p-4"><h3 class="text-amber-300 font-semibold mb-2 text-lg">Controls</h3><ul class="space-y-1.5 text-stone-200"><li><b>WASD / Arrows</b> — move Adesua</li><li><b>Stand in a bush</b> — hide</li><li><b>F</b> — Forge &nbsp; <b>B</b> — Moat &nbsp; <b>Esc</b> — Pause</li><li><b>H</b> — help &nbsp; <b>M</b> — mute</li></ul></div>
+        <div class="chip rounded-xl p-4"><h3 class="text-amber-300 font-semibold mb-2 text-lg">Guards &amp; detection</h3><p class="leading-relaxed text-stone-200">Stay out of the <span class="text-emerald-400">green vision cones</span>. They turn <span class="text-amber-300">yellow</span> when a guard hears you, <span class="text-red-400">red</span> when seen. The white ring around you shows how far your footsteps carry. Fill <b>DETECTION</b> and you're caught.</p></div>
+        <div class="chip rounded-xl p-4"><h3 class="text-amber-300 font-semibold mb-2 text-lg">The loop</h3><p class="leading-relaxed text-stone-200"><b>Steal</b> materials &amp; cowries → <b>Forge</b> plaques that upgrade you → dig the <b>Moat</b> (the glowing ring) to thin out patrols. Clear all 3 acts <i>and</i> seal the moat to win. Progress saves automatically.</p></div>
+      </div>
+      <button onclick="UI.closeHelp()" class="glow-btn mt-5 self-center px-6 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-900 font-semibold">Got it</button>
+    </div>
+
+    <!-- Pause menu -->
+    <div id="pause-menu" class="hidden absolute inset-0 z-50 flex-col items-center justify-center bg-black/75">
+      <div class="bg-stone-900/97 ring-1 ring-amber-600/50 rounded-2xl p-6 w-64" style="box-shadow:0 12px 44px rgba(0,0,0,.65)">
+        <h2 class="text-2xl text-amber-300 font-bold text-center mb-4">Paused</h2>
+        <div class="flex flex-col gap-1.5 text-stone-100">
+          <button onclick="UI.resumeGame()"  class="menu-btn text-left px-4 py-2 rounded-lg">▶  Resume</button>
+          <button onclick="UI.openSettings(true)" class="menu-btn text-left px-4 py-2 rounded-lg">⚙  Settings</button>
+          <button onclick="UI.openHelp()"     class="menu-btn text-left px-4 py-2 rounded-lg">❔  How to Play</button>
+          <button onclick="UI.restartAct()"   class="menu-btn text-left px-4 py-2 rounded-lg">↺  Restart Act</button>
+          <button onclick="UI.quitToTitle()"  class="menu-btn text-left px-4 py-2 rounded-lg text-red-300">⏏  Quit to Title</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div id="settings-overlay" class="hidden absolute inset-0 z-[60] flex-col items-center justify-center bg-black/80">
+      <div class="bg-stone-900/98 ring-1 ring-amber-600/50 rounded-2xl p-6 w-[420px]" style="box-shadow:0 12px 44px rgba(0,0,0,.7)">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl text-amber-300 font-bold">Settings</h2>
+          <button onclick="UI.closeSettings()" class="glow-btn px-3 py-1 rounded-md bg-stone-700 hover:bg-stone-600 text-sm">✕</button>
+        </div>
+        <div class="space-y-4 text-stone-100 text-sm">
+          <label class="block"><div class="flex justify-between mb-1"><span>Music volume</span><span id="lbl-music" class="text-amber-300"></span></div>
+            <input id="set-music" type="range" min="0" max="100" class="w-full"></label>
+          <label class="block"><div class="flex justify-between mb-1"><span>Sound effects</span><span id="lbl-sfx" class="text-amber-300"></span></div>
+            <input id="set-sfx" type="range" min="0" max="100" class="w-full"></label>
+          <label class="block"><div class="flex justify-between mb-1"><span>Brightness</span><span id="lbl-bright" class="text-amber-300"></span></div>
+            <input id="set-bright" type="range" min="0" max="100" class="w-full"></label>
+          <div><div class="mb-1">Difficulty</div>
+            <div id="set-diff" class="grid grid-cols-3 gap-2">
+              <button data-diff="easy"   class="diff-btn py-1.5 rounded-md bg-stone-800 hover:bg-stone-700">Easy</button>
+              <button data-diff="normal" class="diff-btn py-1.5 rounded-md bg-stone-800 hover:bg-stone-700">Normal</button>
+              <button data-diff="hard"   class="diff-btn py-1.5 rounded-md bg-stone-800 hover:bg-stone-700">Hard</button>
+            </div>
+            <div class="text-[11px] text-stone-400 mt-1">Changes apply to the current mission immediately.</div>
+          </div>
+          <label class="flex items-center justify-between"><span>Reduce motion <span class="text-[11px] text-stone-400">(less shake / flashing)</span></span>
+            <input id="set-motion" type="checkbox" class="w-5 h-5 accent-amber-500"></label>
+          <button onclick="UI.resetProgress()" class="w-full mt-2 py-2 rounded-lg bg-red-900/70 hover:bg-red-800 text-red-100 text-sm">Reset all progress</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generic info modal (first-time Forge / Moat explainers) -->
+    <div id="info-modal" class="hidden absolute inset-0 z-[70] flex-col items-center justify-center bg-black/75">
+      <div class="bg-stone-900/98 ring-1 ring-amber-600/60 rounded-2xl p-6 w-[380px]" style="box-shadow:0 12px 44px rgba(0,0,0,.7)">
+        <h2 id="info-title" class="text-xl text-amber-300 font-bold mb-2"></h2>
+        <p id="info-body" class="text-stone-200 text-[15px] leading-relaxed mb-5"></p>
+        <button id="info-ok" class="glow-btn w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-900 font-semibold">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= scripts ================= -->
+  <script src="src/state.js"></script>
+  <script>
+    window.DPR = Math.min(window.devicePixelRatio || 1, 3);
+    const AVATARS = {
+      'The Elder Caster': { e:'🧓', c:'#b5792a' },
+      'Oba Ewuare':       { e:'👑', c:'#f0c040' },
+      'Iyoba Idia':       { e:'👸', c:'#E06040' },
+    };
+    const SVG_SOUND_ON  = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>';
+    const SVG_SOUND_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/></svg>';
+    const SVG_HELP      = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 4.5 2.6c-.9.6-1.6 1.2-1.6 2.4"/><circle cx="12" cy="17.5" r="0.6" fill="currentColor"/></svg>';
+    const SVG_GEAR      = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.2.61.78 1.05 1.51 1.05H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+
+    const UI = {
+      showHUD(){ const h=document.getElementById('hud'); h.classList.remove('hidden'); h.classList.add('flex'); document.getElementById('corner-btns').style.display='none'; this.updateHUD(); },
+      hideHUD(){ const h=document.getElementById('hud'); h.classList.add('hidden'); h.classList.remove('flex'); document.getElementById('corner-btns').style.display='flex'; },
+      showHelpButton(){},
+
+      initIcons(textures){
+        if(!textures) return;
+        const set=(id,key)=>{ try{ document.getElementById(id).src=textures.getBase64(key); }catch(e){} };
+        set('ic-cowrie','cowrie'); set('ic-coral','coral'); set('ic-bronze','bronze'); set('ic-mudfish','mudfish');
+      },
+
+      setObjective(t){ const el=document.getElementById('hud-objective'); if(el) el.textContent='► Objective: '+t; },
+
+      updateHUD(){
+        const gs=window.GameState; if(!gs) return;
+        let beads=''; for(let i=0;i<gs.maxHealth;i++) beads += `<span style="color:${i<gs.hp?'#ff6a4d':'#4a322a'}">●</span>`;
+        document.getElementById('hud-hp').innerHTML=beads;
+        document.getElementById('ct-cowrie').textContent=gs.cowries;
+        document.getElementById('ct-coral').textContent=gs.materials.coral;
+        document.getElementById('ct-bronze').textContent=gs.materials.bronze;
+        document.getElementById('ct-mudfish').textContent=gs.materials.mudfish;
+        document.getElementById('hud-act').textContent='ACT '+({1:'I',2:'II',3:'III'}[gs.currentAct]||gs.currentAct);
+        document.getElementById('hud-moat').textContent='Moat '+Math.round(gs.moatProgress()*100)+'%';
+      },
+
+      setAlert(pct){
+        const f=document.getElementById('alert-fill'); f.style.width=pct+'%';
+        const lab=document.getElementById('alert-label');
+        if(pct>75){ f.style.background='#ff3030'; lab.textContent='SPOTTED'; lab.className='text-[10px] font-bold tracking-wider text-red-400'; }
+        else if(pct>35){ f.style.background='#f0c040'; lab.textContent='SEARCHING'; lab.className='text-[10px] font-bold tracking-wider text-amber-300'; }
+        else { f.style.background='#40e070'; lab.textContent='CLEAR'; lab.className='text-[10px] font-bold tracking-wider text-emerald-400'; }
+      },
+
+      toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('opacity-100'); t.classList.remove('opacity-0'); clearTimeout(this._tt); this._tt=setTimeout(()=>{ t.classList.add('opacity-0'); t.classList.remove('opacity-100'); },2400); },
+
+      // dialogue
+      showDialogue(speaker, lines, onDone){
+        this._dlines=lines.slice(); this._di=0; this._dcb=onDone;
+        const av=AVATARS[speaker]||{e:'🗣️',c:'#caa472'};
+        const port=document.getElementById('dlg-portrait'); port.textContent=av.e; port.style.borderColor=av.c;
+        port.classList.remove('pop'); void port.offsetWidth; port.classList.add('pop');
+        document.getElementById('dlg-speaker').textContent=speaker;
+        const ov=document.getElementById('dialogue'); ov.classList.remove('hidden'); ov.classList.add('flex'); this._typeLine();
+      },
+      dialogueOpen(){ return !document.getElementById('dialogue').classList.contains('hidden'); },
+      _typeLine(){ clearInterval(this._tw); const full=this._dlines[this._di], el=document.getElementById('dlg-text'); el.textContent=''; this._twDone=false; let i=0; this._tw=setInterval(()=>{ el.textContent=full.slice(0,++i); if(i>=full.length){ clearInterval(this._tw); this._twDone=true; } },16); },
+      _dadvance(){ if(!this._dlines) return; if(window.Sound) Sound.click(); if(!this._twDone){ clearInterval(this._tw); document.getElementById('dlg-text').textContent=this._dlines[this._di]; this._twDone=true; return; } this._di++; if(this._di>=this._dlines.length){ const ov=document.getElementById('dialogue'); ov.classList.add('hidden'); ov.classList.remove('flex'); const cb=this._dcb; this._dcb=null; this._dlines=null; if(cb) cb(); } else this._typeLine(); },
+
+      // help
+      openHelp(){ if(window.__stealth) window.__stealth.uiPaused=true; const ov=document.getElementById('help-overlay'); ov.classList.remove('hidden'); ov.classList.add('flex'); if(window.Sound) Sound.click(); },
+      helpOpen(){ return !document.getElementById('help-overlay').classList.contains('hidden'); },
+      closeHelp(){ document.getElementById('help-overlay').classList.add('hidden'); document.getElementById('help-overlay').classList.remove('flex'); if(window.__stealth && this._noModals()) window.__stealth.uiPaused=false; if(window.Sound) Sound.click(); },
+
+      // generic info modal
+      infoModal(title, body, onOk){
+        document.getElementById('info-title').textContent=title;
+        document.getElementById('info-body').textContent=body;
+        const ov=document.getElementById('info-modal'); ov.classList.remove('hidden'); ov.classList.add('flex');
+        this._infoCb=onOk; if(window.Sound) Sound.click();
+      },
+      infoOpen(){ return !document.getElementById('info-modal').classList.contains('hidden'); },
+      closeInfo(){ const ov=document.getElementById('info-modal'); ov.classList.add('hidden'); ov.classList.remove('flex'); const cb=this._infoCb; this._infoCb=null; if(cb) cb(); },
+
+      // pause
+      pauseOpen(){ return !document.getElementById('pause-menu').classList.contains('hidden'); },
+      openPause(){ if(!window.__stealth) return; window.__stealth.uiPaused=true; if(window.__stealth.player) window.__stealth.player.freeze(); const ov=document.getElementById('pause-menu'); ov.classList.remove('hidden'); ov.classList.add('flex'); if(window.Sound) Sound.click(); },
+      resumeGame(){ document.getElementById('pause-menu').classList.add('hidden'); document.getElementById('pause-menu').classList.remove('flex'); if(window.__stealth && this._noModals()) window.__stealth.uiPaused=false; if(window.Sound) Sound.click(); },
+      restartAct(){ this.resumeGame(); if(window.__stealth) window.__stealth.scene.restart(); },
+      quitToTitle(){ document.getElementById('pause-menu').classList.add('hidden'); document.getElementById('pause-menu').classList.remove('flex'); if(window.__stealth) window.__stealth.scene.start('MenuScene'); },
+
+      // settings
+      settingsOpen(){ return !document.getElementById('settings-overlay').classList.contains('hidden'); },
+      openSettings(fromPause){ this._settingsFromPause=!!fromPause; if(!fromPause && window.__stealth) window.__stealth.uiPaused=true; this.syncSettingsUI(); const ov=document.getElementById('settings-overlay'); ov.classList.remove('hidden'); ov.classList.add('flex'); if(window.Sound) Sound.click(); },
+      closeSettings(){ document.getElementById('settings-overlay').classList.add('hidden'); document.getElementById('settings-overlay').classList.remove('flex'); if(window.Settings) Settings.save(); if(!this._settingsFromPause && window.__stealth && this._noModals()) window.__stealth.uiPaused=false; if(window.Sound) Sound.click(); },
+      syncSettingsUI(){
+        const S=window.Settings; if(!S) return;
+        document.getElementById('set-music').value=Math.round(S.musicVol*100);
+        document.getElementById('set-sfx').value=Math.round(S.sfxVol*100);
+        document.getElementById('set-bright').value=Math.round(S.brightness*100);
+        document.getElementById('set-motion').checked=S.reduceMotion;
+        document.getElementById('lbl-music').textContent=Math.round(S.musicVol*100)+'%';
+        document.getElementById('lbl-sfx').textContent=Math.round(S.sfxVol*100)+'%';
+        document.getElementById('lbl-bright').textContent=Math.round(S.brightness*100)+'%';
+        document.querySelectorAll('.diff-btn').forEach(b=>{ b.classList.toggle('bg-amber-600', b.dataset.diff===S.difficulty); b.classList.toggle('text-stone-900', b.dataset.diff===S.difficulty); });
+      },
+      resetProgress(){ if(window.GameSave) GameSave.clear(); if(window.GameState) GameState.reset(); if(window.Settings){ Settings.tutorialDone=false; Settings.forgeSeen=false; Settings.moatSeen=false; Settings.save(); } this.toast('Progress reset.'); this.closeSettings(); if(window.__stealth) window.__stealth.scene.start('MenuScene'); },
+
+      toggleMute(){ if(!window.Sound) return; const muted=Sound.toggleMute(); document.querySelectorAll('.btn-mute').forEach(b=>b.innerHTML=muted?SVG_SOUND_OFF:SVG_SOUND_ON); },
+
+      _noModals(){ return !this.helpOpen() && !this.settingsOpen() && !this.pauseOpen() && !this.infoOpen() && document.getElementById('forge-overlay').classList.contains('hidden'); },
+
+      handleEscape(){
+        if(this.dialogueOpen()) return;
+        if(this.infoOpen()){ this.closeInfo(); return; }
+        if(this.settingsOpen()){ this.closeSettings(); return; }
+        if(this.helpOpen()){ this.closeHelp(); return; }
+        if(!document.getElementById('forge-overlay').classList.contains('hidden')){ if(window.Forge) Forge.close(); return; }
+        if(window.__buildOpen) return;            // BuildScene closes itself on Esc
+        if(this.pauseOpen()){ this.resumeGame(); return; }
+        if(window.__stealth && !window.__stealth.complete){ this.openPause(); return; }
+      },
+    };
+    window.UI=UI;
+
+    document.addEventListener('DOMContentLoaded',()=>{
+      document.querySelectorAll('.btn-mute').forEach(b=>b.innerHTML=SVG_SOUND_ON);
+      document.querySelectorAll('.btn-help-ic').forEach(b=>b.innerHTML=SVG_HELP);
+      document.querySelectorAll('.btn-gear').forEach(b=>b.innerHTML=SVG_GEAR);
+      document.getElementById('dialogue').addEventListener('click',()=>UI._dadvance());
+      document.getElementById('forge-close').addEventListener('click',()=>window.Forge&&Forge.close());
+      document.getElementById('info-ok').addEventListener('click',()=>UI.closeInfo());
+
+      // settings wiring (live apply + persist)
+      const S=()=>window.Settings;
+      document.getElementById('set-music').addEventListener('input',e=>{ S().musicVol=e.target.value/100; document.getElementById('lbl-music').textContent=e.target.value+'%'; if(window.Sound) Sound.setMusicVolume(S().musicVol); S().save(); });
+      document.getElementById('set-sfx').addEventListener('input',e=>{ S().sfxVol=e.target.value/100; document.getElementById('lbl-sfx').textContent=e.target.value+'%'; if(window.Sound){ Sound.setSfxVolume(S().sfxVol); Sound.click(); } S().save(); });
+      document.getElementById('set-bright').addEventListener('input',e=>{ S().brightness=e.target.value/100; document.getElementById('lbl-bright').textContent=e.target.value+'%'; if(window.__stealth&&window.__stealth.lighting) window.__stealth.lighting.darkness=S().darkness(); S().save(); });
+      document.querySelectorAll('.diff-btn').forEach(b=>b.addEventListener('click',()=>{ S().difficulty=b.dataset.diff; UI.syncSettingsUI(); if(window.__stealth&&window.__stealth.applyDifficulty) window.__stealth.applyDifficulty(); S().save(); }));
+      document.getElementById('set-motion').addEventListener('change',e=>{ S().reduceMotion=e.target.checked; S().save(); });
+
+      window.addEventListener('keydown',(e)=>{
+        if(UI.dialogueOpen() && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); UI._dadvance(); }
+        else if(e.key==='Escape'){ e.preventDefault(); UI.handleEscape(); }
+      });
+
+      const unlock=()=>{ if(window.Sound){ Sound.resume(); Sound.startAmbient(); } window.removeEventListener('pointerdown',unlock); window.removeEventListener('keydown',unlock); };
+      window.addEventListener('pointerdown',unlock); window.addEventListener('keydown',unlock);
+    });
+  </script>
+  <script src="src/managers/Storage.js"></script>
+  <script src="src/managers/Sound.js"></script>
+  <script src="src/managers/Settings.js"></script>
+  <script src="src/managers/Tutorial.js"></script>
+  <script src="src/managers/Lighting.js"></script>
+  <script src="src/scenes/ForgeScene.js"></script>
+  <script src="src/entities/Player.js"></script>
+  <script src="src/entities/Guard.js"></script>
+  <script src="src/entities/MoatGrid.js"></script>
+  <script src="src/scenes/BootScene.js"></script>
+  <script src="src/scenes/MenuScene.js"></script>
+  <script src="src/scenes/StealthScene.js"></script>
+  <script src="src/scenes/BuildScene.js"></script>
+  <script src="src/scenes/VictoryScene.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
