@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iya 3D: Guardians of the Sky-Kings</title>
+
+  <!-- Three.js classic GLOBAL build (no ES modules) so it runs from file:// -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    html,body{ margin:0; height:100%; overflow:hidden; background:#07050c; font-family:Georgia,'Times New Roman',serif; }
+    #c{ position:fixed; inset:0; width:100vw; height:100vh; display:block; }
+    .chip{ background:rgba(16,10,7,.82); border:1px solid rgba(240,192,64,.3); }
+    .glow-btn{ transition:all .15s ease; }
+    .glow-btn:hover{ transform:translateY(-1px); box-shadow:0 4px 16px rgba(240,192,64,.3); }
+    .menu-btn{ transition:all .15s ease; }
+    .menu-btn:hover{ background:rgba(240,192,64,.16); transform:translateX(2px); }
+    input[type=range]{ accent-color:#d9a441; }
+    .dot{ width:11px;height:11px;border-radius:50%;display:inline-block;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.4); }
+    @keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+    .pop{ animation:pop .25s ease-out; }
+    @keyframes fadeUp{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+  </style>
+</head>
+<body class="text-stone-100 select-none">
+  <canvas id="c"></canvas>
+
+  <!-- red flash on capture -->
+  <div id="flash" class="fixed inset-0 z-[35] pointer-events-none" style="background:#ff0000;opacity:0"></div>
+
+  <!-- ===== HUD (two-tier) ===== -->
+  <div id="hud" class="hidden fixed top-0 left-0 right-0 z-20 flex-col px-3 py-1.5 gap-1"
+       style="background:linear-gradient(180deg,rgba(8,5,3,.92),rgba(8,5,3,.0));">
+    <div class="flex items-center gap-2">
+      <span id="hud-act" class="text-amber-300 font-bold tracking-widest text-sm shrink-0">ACT I</span>
+      <div class="flex-1 min-w-[120px] mx-1 max-w-md">
+        <div class="flex items-center justify-between mb-0.5">
+          <span class="text-[9px] text-stone-400 tracking-[0.2em]">DETECTION</span>
+          <span id="alert-label" class="text-[10px] font-bold tracking-wider text-emerald-400">CLEAR</span>
+        </div>
+        <div class="h-2.5 w-full bg-black/50 rounded-full overflow-hidden ring-1 ring-black/60">
+          <div id="alert-fill" class="h-full rounded-full transition-[width] duration-100" style="width:0%;background:#40e070;"></div>
+        </div>
+      </div>
+      <div id="hud-hp" class="text-base leading-none shrink-0"></div>
+      <span class="chip rounded-md px-2 py-1 text-sm font-semibold flex items-center gap-1.5 shrink-0" title="Cowries">
+        <span class="dot" style="background:#fdf3d6"></span><span id="ct-cowrie">0</span></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="hud-objective" class="flex-1 truncate text-[13px] text-amber-100">► Objective: —</span>
+      <span class="chip rounded-md px-2 py-0.5 text-[13px] flex items-center gap-2 shrink-0" title="Materials">
+        <span class="flex items-center gap-1"><span class="dot" style="background:#E06040"></span><span id="ct-coral">0</span></span>
+        <span class="flex items-center gap-1"><span class="dot" style="background:#D4AF37;border-radius:2px"></span><span id="ct-bronze">0</span></span>
+        <span class="flex items-center gap-1"><span class="dot" style="background:#2f7a3c"></span><span id="ct-mudfish">0</span></span>
+      </span>
+      <span id="hud-moat" class="text-[12px] text-sky-300 shrink-0">Moat 0%</span>
+      <div class="flex gap-1 shrink-0">
+        <button onclick="window.__stealth&&__stealth.openForge()" class="glow-btn px-2.5 py-1 rounded-md bg-amber-700/90 hover:bg-amber-600 text-stone-50 text-xs font-semibold">Forge</button>
+        <button onclick="window.__stealth&&__stealth.openMoat()" class="glow-btn px-2.5 py-1 rounded-md bg-sky-800/90 hover:bg-sky-700 text-stone-50 text-xs font-semibold">Moat</button>
+      </div>
+      <div class="w-px h-6 bg-amber-700/30 shrink-0"></div>
+      <div class="flex gap-1 shrink-0">
+        <button onclick="UI.toggleMute()" title="Mute (M)" class="btn-mute w-7 h-7 rounded-md chip glow-btn flex items-center justify-center text-amber-200"></button>
+        <button onclick="UI.openSettings(false)" title="Settings" class="btn-gear w-7 h-7 rounded-md chip glow-btn flex items-center justify-center text-amber-200"></button>
+        <button onclick="UI.openHelp()" title="Help (H)" class="btn-help-ic w-7 h-7 rounded-md chip glow-btn flex items-center justify-center text-amber-200"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- act banner -->
+  <div id="act-banner" class="hidden fixed inset-0 z-30 flex-col items-center justify-center pointer-events-none">
+    <div id="ab-title" class="text-amber-300 font-bold text-6xl" style="text-shadow:0 3px 12px #000"></div>
+    <div id="ab-sub" class="text-orange-400 text-2xl mt-2" style="text-shadow:0 2px 8px #000"></div>
+  </div>
+
+  <!-- tutorial tip -->
+  <div id="tutorial-tip" class="hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3 py-1.5 rounded-full bg-stone-900/92 ring-1 ring-amber-500/50 max-w-[88%]">
+    <span class="text-amber-300 text-sm">👁️</span>
+    <span id="tut-text" class="text-stone-50 text-[12.5px]"></span>
+    <button onclick="Tutorial.skip()" class="ml-1 text-[11px] text-stone-400 hover:text-amber-300 underline shrink-0">skip</button>
+  </div>
+
+  <!-- toast -->
+  <div id="toast" class="fixed bottom-16 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-lg bg-black/85 text-amber-200 text-sm opacity-0 transition-opacity duration-300 ring-1 ring-amber-600/40 pointer-events-none max-w-[90%] text-center"></div>
+
+  <!-- ===== MENU ===== -->
+  <div id="menu" class="fixed inset-0 z-40 flex flex-col items-center justify-center"
+       style="background:radial-gradient(circle at 50% 30%,#241208,#07050c 70%)">
+    <div class="text-amber-500 font-bold" style="font-size:96px;text-shadow:0 6px 24px #000">IYA</div>
+    <div class="text-amber-300 text-2xl tracking-wide">Guardians of the Sky-Kings <span class="text-stone-400 text-base">· 3D</span></div>
+    <div class="text-stone-400 mt-1">Benin City · the age of Oba Ewuare</div>
+    <button onclick="UI.newGame()" class="glow-btn mt-8 px-8 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-stone-900 font-bold text-lg">▶ New Game</button>
+    <button id="continue-btn" onclick="UI.continueGame()" class="hidden glow-btn mt-2 px-6 py-2 rounded-lg chip text-emerald-300"></button>
+    <div class="mt-8 flex gap-2 text-xs text-stone-300">
+      <span class="chip rounded px-2 py-1">WASD / Arrows · Move</span>
+      <span class="chip rounded px-2 py-1">Bushes · Hide</span>
+      <span class="chip rounded px-2 py-1">F · Forge</span>
+      <span class="chip rounded px-2 py-1">B · Moat</span>
+      <span class="chip rounded px-2 py-1">Esc · Pause</span>
+    </div>
+  </div>
+
+  <!-- ===== VICTORY ===== -->
+  <div id="victory" class="hidden fixed inset-0 z-40 flex-col items-center justify-center"
+       style="background:radial-gradient(circle at 50% 40%,#2a1c08,#07050c 70%)">
+    <div class="text-amber-300 font-bold text-5xl" style="text-shadow:0 4px 16px #000">IGODOMIGODO ENDURES</div>
+    <div class="text-orange-400 text-lg mt-3">The Great Iya rings the city. The Sky-Kings are guarded.</div>
+    <div id="victory-stats" class="text-stone-300 mt-4 font-mono text-sm"></div>
+    <button onclick="UI.showMenu()" class="glow-btn mt-8 px-6 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-900 font-semibold">Return to title</button>
+  </div>
+
+  <!-- ===== Dialogue ===== -->
+  <div id="dialogue" class="hidden fixed inset-0 z-40 flex-col justify-end cursor-pointer" style="background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,.2) 40%,transparent)">
+    <div class="m-4 mb-8 mx-auto max-w-3xl w-[90%] p-5 rounded-2xl bg-stone-900/97 ring-1 ring-amber-600/50 flex gap-4 items-start">
+      <div id="dlg-portrait" class="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-4xl ring-2" style="background:#3a2a18">🧓</div>
+      <div class="flex-1">
+        <div id="dlg-speaker" class="text-amber-300 font-bold mb-1.5 text-lg">Speaker</div>
+        <div id="dlg-text" class="text-stone-50 text-[17px] leading-7 min-h-[3.5rem]">...</div>
+        <div class="text-right text-xs text-amber-200/70 mt-2">▸ click or press Enter to continue</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Forge ===== -->
+  <div id="forge-overlay" class="hidden fixed inset-0 z-40 flex-col bg-stone-950/97 p-5">
+    <div class="flex items-center justify-between mb-1">
+      <h2 class="text-2xl text-amber-300 font-bold">The Artisan's Forge</h2>
+      <button id="forge-close" class="glow-btn px-3 py-1 rounded-md bg-stone-700 hover:bg-stone-600 text-sm">⟵ Back to the night</button>
+    </div>
+    <p class="text-stone-300 text-sm mb-1">Cast collected materials into bronze plaques. Each grants a permanent gift.</p>
+    <div id="forge-mats" class="text-amber-200 text-sm mb-4 font-mono"></div>
+    <div id="forge-cards" class="grid grid-cols-3 gap-4 flex-1 max-w-4xl"></div>
+  </div>
+
+  <!-- ===== Moat ===== -->
+  <div id="moat-overlay" class="hidden fixed inset-0 z-40 flex-col items-center bg-stone-950/97 p-5">
+    <div class="w-full max-w-2xl flex items-center justify-between mb-2">
+      <h2 class="text-2xl text-amber-300 font-bold">The Great Iya — Moat</h2>
+      <button onclick="Moat.close()" class="glow-btn px-3 py-1 rounded-md bg-stone-700 hover:bg-stone-600 text-sm">⟵ Back</button>
+    </div>
+    <div id="moat-info" class="text-amber-200 text-sm font-mono mb-1"></div>
+    <div class="w-full max-w-2xl h-2 bg-black/50 rounded-full overflow-hidden ring-1 ring-black/60 mb-3">
+      <div id="moat-bar" class="h-full bg-sky-500 transition-[width]" style="width:0%"></div>
+    </div>
+    <div id="moat-grid" class="grid gap-[2px] w-full max-w-xl"></div>
+    <p class="text-stone-400 text-xs mt-3">Click the glowing ring tiles to dig (5 cowries each).</p>
+  </div>
+
+  <!-- ===== Help ===== -->
+  <div id="help-overlay" class="hidden fixed inset-0 z-50 flex-col bg-stone-950/98 p-6 overflow-auto">
+    <div class="flex items-center justify-between mb-3 max-w-4xl mx-auto w-full">
+      <h2 class="text-2xl text-amber-300 font-bold">How to Play</h2>
+      <button onclick="UI.closeHelp()" class="glow-btn px-3 py-1 rounded-md bg-stone-700 hover:bg-stone-600 text-sm">✕ Close</button>
+    </div>
+    <div class="grid grid-cols-2 gap-5 text-[15px] text-stone-100 max-w-4xl mx-auto">
+      <div class="chip rounded-xl p-4"><h3 class="text-amber-300 font-semibold mb-2 text-lg">The story</h3><p class="text-stone-200 leading-relaxed">You are <b>Adesua</b>, a royal bronze caster in 15th-century Benin City. Sneak through the palace at night, steal the assassins' plans, and protect Oba Ewuare across three acts.</p></div>
+      <div class="chip rounded-xl p-4"><h3 class="text-amber-300 font-semibold mb-2 text-lg">Controls</h3><ul class="space-y-1.5 text-stone-200"><li><b>WASD / Arrows</b> — move (camera-relative)</li><li><b>Stand in a bush</b> — hide</li><li><b>F</b> — Forge · <b>B</b> — Moat · <b>Esc</b> — Pause</li><li><b>H</b> — help · <b>M</b> — mute</li></ul></div>
+      <div class="chip rounded-xl p-4"><h3 class="text-amber-300 font-semibold mb-2 text-lg">Guards &amp; detection</h3><p class="text-stone-200 leading-relaxed">Stay out of the <span class="text-emerald-400">green vision cones</span>. They turn <span class="text-amber-300">yellow</span> when a guard hears you, <span class="text-red-400">red</span> when seen. The white ring shows how far your steps carry. Fill <b>DETECTION</b> and you're caught.</p></div>
+      <div class="chip rounded-xl p-4"><h3 class="text-amber-300 font-semibold mb-2 text-lg">The loop</h3><p class="text-stone-200 leading-relaxed"><b>Steal</b> materials &amp; cowries → <b>Forge</b> upgrades → dig the <b>Moat</b> to thin patrols. Clear 3 acts <i>and</i> seal the moat to win. Progress saves automatically.</p></div>
+    </div>
+  </div>
+
+  <!-- ===== Pause ===== -->
+  <div id="pause-menu" class="hidden fixed inset-0 z-50 flex-col items-center justify-center bg-black/75">
+    <div class="bg-stone-900/97 ring-1 ring-amber-600/50 rounded-2xl p-6 w-64">
+      <h2 class="text-2xl text-amber-300 font-bold text-center mb-4">Paused</h2>
+      <div class="flex flex-col gap-1.5 text-stone-100">
+        <button onclick="UI.resumeGame()" class="menu-btn text-left px-4 py-2 rounded-lg">▶  Resume</button>
+        <button onclick="UI.openSettings(true)" class="menu-btn text-left px-4 py-2 rounded-lg">⚙  Settings</button>
+        <button onclick="UI.openHelp()" class="menu-btn text-left px-4 py-2 rounded-lg">❔  How to Play</button>
+        <button onclick="UI.restartAct()" class="menu-btn text-left px-4 py-2 rounded-lg">↺  Restart Act</button>
+        <button onclick="UI.quitToTitle()" class="menu-btn text-left px-4 py-2 rounded-lg text-red-300">⏏  Quit to Title</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Settings ===== -->
+  <div id="settings-overlay" class="hidden fixed inset-0 z-[60] flex-col items-center justify-center bg-black/80">
+    <div class="bg-stone-900/98 ring-1 ring-amber-600/50 rounded-2xl p-6 w-[420px]">
+      <div class="flex items-center justify-between mb-4"><h2 class="text-2xl text-amber-300 font-bold">Settings</h2>
+        <button onclick="UI.closeSettings()" class="glow-btn px-3 py-1 rounded-md bg-stone-700 hover:bg-stone-600 text-sm">✕</button></div>
+      <div class="space-y-4 text-stone-100 text-sm">
+        <label class="block"><div class="flex justify-between mb-1"><span>Music volume</span><span id="lbl-music" class="text-amber-300"></span></div><input id="set-music" type="range" min="0" max="100" class="w-full"></label>
+        <label class="block"><div class="flex justify-between mb-1"><span>Sound effects</span><span id="lbl-sfx" class="text-amber-300"></span></div><input id="set-sfx" type="range" min="0" max="100" class="w-full"></label>
+        <label class="block"><div class="flex justify-between mb-1"><span>Brightness</span><span id="lbl-bright" class="text-amber-300"></span></div><input id="set-bright" type="range" min="0" max="100" class="w-full"></label>
+        <div><div class="mb-1">Difficulty</div><div id="set-diff" class="grid grid-cols-3 gap-2">
+          <button data-diff="easy" class="diff-btn py-1.5 rounded-md bg-stone-800 hover:bg-stone-700">Easy</button>
+          <button data-diff="normal" class="diff-btn py-1.5 rounded-md bg-stone-800 hover:bg-stone-700">Normal</button>
+          <button data-diff="hard" class="diff-btn py-1.5 rounded-md bg-stone-800 hover:bg-stone-700">Hard</button></div></div>
+        <label class="flex items-center justify-between"><span>Reduce motion</span><input id="set-motion" type="checkbox" class="w-5 h-5 accent-amber-500"></label>
+        <button onclick="UI.resetProgress()" class="w-full mt-2 py-2 rounded-lg bg-red-900/70 hover:bg-red-800 text-red-100 text-sm">Reset all progress</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Info modal ===== -->
+  <div id="info-modal" class="hidden fixed inset-0 z-[70] flex-col items-center justify-center bg-black/75">
+    <div class="bg-stone-900/98 ring-1 ring-amber-600/60 rounded-2xl p-6 w-[380px]">
+      <h2 id="info-title" class="text-xl text-amber-300 font-bold mb-2"></h2>
+      <p id="info-body" class="text-stone-200 text-[15px] leading-relaxed mb-5"></p>
+      <button id="info-ok" class="glow-btn w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-900 font-semibold">Got it</button>
+    </div>
+  </div>
+
+  <!-- ================= scripts ================= -->
+  <script src="src/state.js"></script>
+  <script src="src/managers/Storage.js"></script>
+  <script src="src/managers/Sound.js"></script>
+  <script src="src/managers/Settings.js"></script>
+  <script src="src/managers/Tutorial.js"></script>
+  <script src="src/entities/MeshFactory.js"></script>
+  <script src="src/engine/World3D.js"></script>
+  <script src="src/engine/CameraRig.js"></script>
+  <script src="src/engine/Input.js"></script>
+  <script src="src/entities/Player3D.js"></script>
+  <script src="src/entities/Guard3D.js"></script>
+  <script src="src/game/Level3D.js"></script>
+  <script src="src/game/StealthGame.js"></script>
+  <script src="src/scenes/ForgeScene.js"></script>
+  <script src="src/scenes/MoatOverlay.js"></script>
+  <script src="src/ui.js"></script>
+  <script src="src/main3d.js"></script>
+</body>
+</html>
