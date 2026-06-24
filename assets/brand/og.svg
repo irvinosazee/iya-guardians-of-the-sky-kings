@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" width="1200" height="1200">
+  <defs>
+    <radialGradient id="obg" cx="32%" cy="44%" r="80%">
+      <stop offset="0%" stop-color="#34200f"/>
+      <stop offset="55%" stop-color="#160d06"/>
+      <stop offset="100%" stop-color="#080507"/>
+    </radialGradient>
+    <linearGradient id="ogold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe9a6"/>
+      <stop offset="55%" stop-color="#f0c040"/>
+      <stop offset="100%" stop-color="#a9781b"/>
+    </linearGradient>
+    <linearGradient id="ocoral" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff8a6a"/>
+      <stop offset="100%" stop-color="#cc3a24"/>
+    </linearGradient>
+  </defs>
+
+  <!-- full square backdrop; the social crop takes the centred 1200x630 band (y 285..915) -->
+  <rect width="1200" height="1200" fill="url(#obg)"/>
+
+  <g transform="translate(0,285)">
+    <!-- clay wall band along the bottom of the crop -->
+    <g opacity="0.5">
+      <rect x="0" y="566" width="1200" height="64" fill="#7e3018"/>
+      <rect x="0" y="566" width="1200" height="6" fill="#5e2310"/>
+      <g stroke="#9c3f20" stroke-width="2">
+        <path d="M40 572 V630 M120 572 V630 M200 572 V630 M280 572 V630 M360 572 V630 M440 572 V630 M520 572 V630 M600 572 V630 M680 572 V630 M760 572 V630 M840 572 V630 M920 572 V630 M1000 572 V630 M1080 572 V630 M1160 572 V630"/>
+      </g>
+    </g>
+
+    <!-- emblem medallion -->
+    <g transform="translate(250 300)">
+      <circle r="150" fill="none" stroke="url(#ogold)" stroke-width="16" opacity="0.92"/>
+      <circle r="118" fill="none" stroke="#7a5414" stroke-width="6" opacity="0.8"/>
+      <circle r="92" fill="url(#ocoral)"/>
+      <circle r="92" fill="none" stroke="#7a1f12" stroke-width="5"/>
+      <path d="M0 -92 l27 52 57 7 -42 39 11 57 -53-28 -53 28 11-57 -42-39 57-7 z"
+            fill="url(#ogold)" stroke="#7a5414" stroke-width="3" stroke-linejoin="round"/>
+      <circle cy="6" r="17" fill="#2a1208"/>
+      <circle cy="6" r="8" fill="#f0c040"/>
+    </g>
+
+    <!-- title block -->
+    <g transform="translate(470 0)">
+      <text x="0" y="250" font-family="Georgia, 'Times New Roman', serif" font-size="150" font-weight="bold" fill="url(#ogold)" letter-spacing="4">IYA</text>
+      <text x="4" y="318" font-family="Georgia, serif" font-size="43" fill="#ff7a5a">Guardians of the Sky-Kings</text>
+      <text x="6" y="366" font-family="Georgia, serif" font-size="26" fill="#cdb07e">Benin City · the age of Oba Ewuare</text>
+      <g transform="translate(6 398)">
+        <rect width="270" height="44" rx="22" fill="rgba(240,192,64,0.12)" stroke="#6b4a22"/>
+        <text x="20" y="30" font-family="monospace" font-size="21" fill="#e8d6a8">A 3D stealth game</text>
+      </g>
+    </g>
+  </g>
+</svg>

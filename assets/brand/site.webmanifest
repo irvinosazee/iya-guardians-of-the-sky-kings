@@ -1,0 +1,16 @@
+{
+  "name": "Iya: Guardians of the Sky-Kings",
+  "short_name": "Iya",
+  "description": "A stealth game set in 15th-century Benin City. Evade guards, forge bronze plaques, and dig the Great Iya moat.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0c0805",
+  "theme_color": "#0c0805",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "favicon.svg", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

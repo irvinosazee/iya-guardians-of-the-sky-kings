@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# After deploying, replace the domain below with your real Vercel URL:
+Sitemap: https://YOUR-PROJECT.vercel.app/sitemap.xml
