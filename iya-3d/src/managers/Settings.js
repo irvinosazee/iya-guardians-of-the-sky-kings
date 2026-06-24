@@ -9,6 +9,8 @@ const Settings = {
   brightness: 0.5,          // 0 = darkest, 1 = brightest
   difficulty: 'normal',     // 'easy' | 'normal' | 'hard'
   reduceMotion: false,
+  camSensitivity: 1,        // mouse/arrow camera sensitivity multiplier
+  camZoom: 11,              // remembered orbit distance
 
   // one-time onboarding flags
   tutorialDone: false,
@@ -29,6 +31,7 @@ const Settings = {
       localStorage.setItem(this.KEY, JSON.stringify({
         musicVol:this.musicVol, sfxVol:this.sfxVol, brightness:this.brightness,
         difficulty:this.difficulty, reduceMotion:this.reduceMotion,
+        camSensitivity:this.camSensitivity, camZoom:this.camZoom,
         tutorialDone:this.tutorialDone, forgeSeen:this.forgeSeen, moatSeen:this.moatSeen,
       }));
     } catch(e){}

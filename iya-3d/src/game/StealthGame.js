@@ -30,7 +30,7 @@ class StealthGame {
     this.RATE_SEEN = 58; this.RATE_HEARD = 20; this.RATE_DECAY = 45;
     this._everMoved = this._everHid = this._everPicked = false;
 
-    this.input = new Input();
+    this.input = new Input(canvas);
     this._loop = this._loop.bind(this);
   }
 
@@ -49,12 +49,17 @@ class StealthGame {
   }
 
   buildAct(){
-    // clear any prior act objects
-    if(this.level) this._teardownLevel();
+    // always start from a clean scene (also clears the menu idle backdrop)
+    if(this.guards) this.guards.forEach(g => g.destroy());
+    this.world.clearScene();
     this.level = new Level3D(this.world);
     this.player = new Player3D(this.world);
     this.player.setPosition(this.level.playerStart.x, this.level.playerStart.z);
-    this.rig = new CameraRig(this.world.camera, this.player.mesh);
+    this.rig = new OrbitCameraRig(this.world.camera, this.player.mesh);
+    if(window.Settings){
+      this.rig.sens = Settings.camSensitivity;
+      if(Settings.camZoom) this.rig.dist = this.rig.ddist = Math.max(this.rig.minDist, Math.min(this.rig.maxDist, Settings.camZoom));
+    }
 
     // guards: count scales with act, +1 while moat unfinished (same rule as 2D)
     let count = 2 + GameState.currentAct + Math.round(1 - GameState.moatProgress());
@@ -133,19 +138,31 @@ class StealthGame {
     const dt = Math.min(0.05, (now - this._t0) / 1000);
     this._t0 = now;
     if(!this.paused && !this.uiPaused && !this.complete) this._tick(dt, now);
-    else if(this.complete || this.uiPaused){ this.rig && this.rig.update(); }
+    else if((this.complete || this.uiPaused) && this.rig){ this.rig.update(dt, this.level && this.level.wallMeshes, { moving:false, reduceMotion: window.Settings && Settings.reduceMotion }); }
     this.level && this.level.update(now);
     this.world.render();
     requestAnimationFrame(this._loop);
   }
 
   _tick(dt, now){
-    // camera-relative movement
+    const p = this.player.position;
+
+    // ----- camera steering (mouse drag / arrows / wheel) -----
+    const md = this.input.consumeMouse();
+    const s = (window.Settings ? Settings.camSensitivity : 1) * 0.005;
+    if(md.dx) this.rig.addYaw(md.dx * s);
+    if(md.dy) this.rig.addPitch(-md.dy * s);
+    const ci = this.input.camIntent();
+    if(ci.yaw)   this.rig.addYaw(ci.yaw * dt * 2.2);
+    if(ci.pitch) this.rig.addPitch(ci.pitch * dt * 1.6);
+    const z = this.input.consumeZoom();
+    if(z){ this.rig.zoom(z * 1.3); if(window.Settings){ Settings.camZoom = this.rig.dist; Settings.save(); } }
+
+    // ----- camera-relative movement (basis from camera yaw) -----
     const intent = this.input.intent();
-    const cam = this.world.camera, p = this.player.position;
-    let fx = p.x - cam.position.x, fz = p.z - cam.position.z;
-    const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;             // camera-forward on ground
-    const rx = -fz, rz = fx;                                            // camera-right
+    const yaw = this.rig.forwardYaw();
+    const fx = Math.cos(yaw), fz = Math.sin(yaw);   // camera-forward on ground
+    const rx = -fz, rz = fx;                        // camera-right
     let wx = fx * (-intent.z) + rx * intent.x;
     let wz = fz * (-intent.z) + rz * intent.x;
     const wl = Math.hypot(wx, wz);
@@ -161,8 +178,10 @@ class StealthGame {
     if(this.player.hidden) this._everHid = true;
     if(window.Tutorial) Tutorial.update(this);
 
-    if(this.player.moving) this.rig.setFacing(this.player.heading);
-    this.rig.update();
+    // gentle auto-align: drift the camera behind movement when not actively dragging
+    if(worldDir.active && !this.input.drag.active)
+      this.rig.yaw = this.rig._lerpAngle(this.rig.yaw, this.player.heading, 0.02);
+    this.rig.update(dt, this.level.wallMeshes, { moving: this.player.moving, reduceMotion: window.Settings && Settings.reduceMotion });
 
     // item pickups
     for(const g of this.level.items){

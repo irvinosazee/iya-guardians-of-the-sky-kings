@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iya 3D: Guardians of the Sky-Kings</title>
 
-  <!-- Three.js classic GLOBAL build (no ES modules) so it runs from file:// -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+  <!-- Three.js classic GLOBAL build (no ES modules) so it runs from file://
+       r149: has CapsuleGeometry (added r142) AND still ships the UMD global build.
+       crossorigin lets real error messages surface instead of "Script error." -->
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
@@ -93,8 +95,11 @@
     <div class="text-stone-400 mt-1">Benin City · the age of Oba Ewuare</div>
     <button onclick="UI.newGame()" class="glow-btn mt-8 px-8 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-stone-900 font-bold text-lg">▶ New Game</button>
     <button id="continue-btn" onclick="UI.continueGame()" class="hidden glow-btn mt-2 px-6 py-2 rounded-lg chip text-emerald-300"></button>
-    <div class="mt-8 flex gap-2 text-xs text-stone-300">
-      <span class="chip rounded px-2 py-1">WASD / Arrows · Move</span>
+    <div class="mt-8 flex flex-wrap justify-center gap-2 text-xs text-stone-300 max-w-2xl">
+      <span class="chip rounded px-2 py-1">WASD · Move</span>
+      <span class="chip rounded px-2 py-1">Drag mouse · Look</span>
+      <span class="chip rounded px-2 py-1">Arrows · Rotate cam</span>
+      <span class="chip rounded px-2 py-1">Scroll · Zoom</span>
       <span class="chip rounded px-2 py-1">Bushes · Hide</span>
       <span class="chip rounded px-2 py-1">F · Forge</span>
       <span class="chip rounded px-2 py-1">B · Moat</span>
@@ -185,6 +190,7 @@
         <label class="block"><div class="flex justify-between mb-1"><span>Music volume</span><span id="lbl-music" class="text-amber-300"></span></div><input id="set-music" type="range" min="0" max="100" class="w-full"></label>
         <label class="block"><div class="flex justify-between mb-1"><span>Sound effects</span><span id="lbl-sfx" class="text-amber-300"></span></div><input id="set-sfx" type="range" min="0" max="100" class="w-full"></label>
         <label class="block"><div class="flex justify-between mb-1"><span>Brightness</span><span id="lbl-bright" class="text-amber-300"></span></div><input id="set-bright" type="range" min="0" max="100" class="w-full"></label>
+        <label class="block"><div class="flex justify-between mb-1"><span>Camera sensitivity</span><span id="lbl-sens" class="text-amber-300"></span></div><input id="set-sens" type="range" min="30" max="200" class="w-full"></label>
         <div><div class="mb-1">Difficulty</div><div id="set-diff" class="grid grid-cols-3 gap-2">
           <button data-diff="easy" class="diff-btn py-1.5 rounded-md bg-stone-800 hover:bg-stone-700">Easy</button>
           <button data-diff="normal" class="diff-btn py-1.5 rounded-md bg-stone-800 hover:bg-stone-700">Normal</button>
@@ -212,7 +218,7 @@
   <script src="src/managers/Tutorial.js"></script>
   <script src="src/entities/MeshFactory.js"></script>
   <script src="src/engine/World3D.js"></script>
-  <script src="src/engine/CameraRig.js"></script>
+  <script src="src/engine/OrbitCameraRig.js"></script>
   <script src="src/engine/Input.js"></script>
   <script src="src/entities/Player3D.js"></script>
   <script src="src/entities/Guard3D.js"></script>

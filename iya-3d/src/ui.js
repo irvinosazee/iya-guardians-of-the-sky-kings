@@ -89,10 +89,12 @@ const UI = {
     document.getElementById('set-music').value=Math.round(S.musicVol*100);
     document.getElementById('set-sfx').value=Math.round(S.sfxVol*100);
     document.getElementById('set-bright').value=Math.round(S.brightness*100);
+    document.getElementById('set-sens').value=Math.round(S.camSensitivity*100);
     document.getElementById('set-motion').checked=S.reduceMotion;
     document.getElementById('lbl-music').textContent=Math.round(S.musicVol*100)+'%';
     document.getElementById('lbl-sfx').textContent=Math.round(S.sfxVol*100)+'%';
     document.getElementById('lbl-bright').textContent=Math.round(S.brightness*100)+'%';
+    document.getElementById('lbl-sens').textContent=Math.round(S.camSensitivity*100)+'%';
     document.querySelectorAll('.diff-btn').forEach(b=>{ const on=b.dataset.diff===S.difficulty; b.classList.toggle('bg-amber-600',on); b.classList.toggle('text-stone-900',on); });
   },
   resetProgress(){ if(window.GameSave) GameSave.clear(); if(window.GameState) GameState.reset(); if(window.Settings){ Settings.tutorialDone=false; Settings.forgeSeen=false; Settings.moatSeen=false; Settings.save(); } this.toast('Progress reset.'); this.closeSettings(); this.showMenu(); },
@@ -145,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('set-music').addEventListener('input',e=>{ S().musicVol=e.target.value/100; document.getElementById('lbl-music').textContent=e.target.value+'%'; if(window.Sound) Sound.setMusicVolume(S().musicVol); S().save(); });
   document.getElementById('set-sfx').addEventListener('input',e=>{ S().sfxVol=e.target.value/100; document.getElementById('lbl-sfx').textContent=e.target.value+'%'; if(window.Sound){ Sound.setSfxVolume(S().sfxVol); Sound.click(); } S().save(); });
   document.getElementById('set-bright').addEventListener('input',e=>{ S().brightness=e.target.value/100; document.getElementById('lbl-bright').textContent=e.target.value+'%'; if(window.__stealth&&__stealth.world) __stealth.world.setBrightness(S().brightness); S().save(); });
+  document.getElementById('set-sens').addEventListener('input',e=>{ S().camSensitivity=e.target.value/100; document.getElementById('lbl-sens').textContent=e.target.value+'%'; if(window.__stealth&&__stealth.rig) __stealth.rig.sens=S().camSensitivity; S().save(); });
   document.querySelectorAll('.diff-btn').forEach(b=>b.addEventListener('click',()=>{ S().difficulty=b.dataset.diff; UI.syncSettingsUI(); if(window.__stealth&&__stealth.applyDifficulty) __stealth.applyDifficulty(); S().save(); }));
   document.getElementById('set-motion').addEventListener('change',e=>{ S().reduceMotion=e.target.checked; S().save(); });
 

@@ -4,6 +4,18 @@
  * single WebGL renderer on the canvas.
  * ============================================================ */
 (function(){
+  // surface any runtime error on screen (WebGL errors are otherwise invisible)
+  window.addEventListener('error', (e) => {
+    let box = document.getElementById('err-box');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'err-box';
+      box.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:9999;max-width:90vw;background:#2a0a0a;color:#ffb4b4;font:12px monospace;padding:10px 12px;border:1px solid #ff5555;border-radius:8px;white-space:pre-wrap;';
+      document.body.appendChild(box);
+    }
+    box.textContent = '⚠ ' + (e.message || e.error) + '\n' + (e.filename||'').split('/').pop() + ':' + e.lineno;
+  });
+
   const canvas = document.getElementById('c');
   let world = null;
   let idleRAF = null;
