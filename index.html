@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Iya 3D: Guardians of the Sky-Kings — a Benin City stealth game</title>
 
   <!-- ===== SEO / Social ===== -->
@@ -38,8 +41,34 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
-    html,body{ margin:0; height:100%; overflow:hidden; background:#07050c; font-family:Georgia,'Times New Roman',serif; }
-    #c{ position:fixed; inset:0; width:100vw; height:100vh; display:block; }
+    html,body{ margin:0; height:100%; overflow:hidden; background:#07050c; font-family:Georgia,'Times New Roman',serif; overscroll-behavior:none; touch-action:none; }
+    #c{ position:fixed; inset:0; width:100vw; height:100vh; display:block; touch-action:none; }
+
+    /* ===== mobile touch controls ===== */
+    #mobile-controls{ display:none; }
+    body.mobile.playing #mobile-controls{ display:block; }
+    #touch-stick{ position:fixed; left:calc(env(safe-area-inset-left,0px) + 22px); bottom:calc(env(safe-area-inset-bottom,0px) + 22px);
+      width:118px; height:118px; border-radius:50%; background:rgba(20,13,7,.32); border:1px solid rgba(240,192,64,.3);
+      z-index:28; touch-action:none; }
+    #touch-knob{ position:absolute; left:50%; top:50%; width:52px; height:52px; border-radius:50%; transform:translate(-50%,-50%);
+      background:radial-gradient(circle at 38% 35%, #ffe9a6, #d9a441); border:1px solid rgba(255,240,180,.6); pointer-events:none;
+      box-shadow:0 2px 10px rgba(0,0,0,.5); }
+    #touch-actions{ position:fixed; right:calc(env(safe-area-inset-right,0px) + 18px); bottom:calc(env(safe-area-inset-bottom,0px) + 24px);
+      display:flex; flex-direction:column; gap:12px; z-index:28; }
+    .touch-btn{ width:62px; height:62px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px;
+      font-weight:bold; color:#ffe9b0; background:rgba(20,13,7,.6); border:1px solid rgba(240,192,64,.4); user-select:none;
+      -webkit-user-select:none; touch-action:none; box-shadow:0 2px 10px rgba(0,0,0,.4); }
+    .touch-btn.held{ background:rgba(240,192,64,.4); color:#1a1008; }
+    #fs-btn{ display:none; }
+    body.mobile #fs-btn{ display:inline-block; }
+    /* bigger tap targets on touch devices */
+    @media (pointer:coarse){
+      #hud .glow-btn{ padding:.45rem .7rem; }
+      .btn-mute,.btn-gear,.btn-help-ic{ width:2.3rem; height:2.3rem; }
+    }
+    /* rotate-to-landscape prompt */
+    #rotate-prompt{ position:fixed; inset:0; z-index:80; background:#0a0710; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+    #c{ touch-action:none; }
     .chip{ background:rgba(16,10,7,.82); border:1px solid rgba(240,192,64,.3); }
     .glow-btn{ transition:all .15s ease; }
     .glow-btn:hover{ transform:translateY(-1px); box-shadow:0 4px 16px rgba(240,192,64,.3); }
@@ -146,6 +175,7 @@
     <div class="text-stone-400 mt-1">Benin City · the age of Oba Ewuare</div>
     <button onclick="UI.newGame()" class="glow-btn mt-8 px-8 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-stone-900 font-bold text-lg">▶ New Game</button>
     <button id="continue-btn" onclick="UI.continueGame()" class="hidden glow-btn mt-2 px-6 py-2 rounded-lg chip text-emerald-300"></button>
+    <button id="fs-btn" onclick="goFullscreen()" class="glow-btn mt-2 px-5 py-2 rounded-lg chip text-amber-200">⛶ Fullscreen</button>
     <div class="mt-8 flex flex-wrap justify-center gap-2 text-xs text-stone-300 max-w-2xl">
       <span class="chip rounded px-2 py-1">WASD · Move</span>
       <span class="chip rounded px-2 py-1">Drag · Look</span>
@@ -264,6 +294,23 @@
     </div>
   </div>
 
+  <!-- ===== mobile touch controls (shown only on touch devices while playing) ===== -->
+  <div id="mobile-controls">
+    <div id="touch-stick"><div id="touch-knob"></div></div>
+    <div id="touch-actions">
+      <div id="btn-throw"  class="touch-btn">Throw</div>
+      <div id="btn-sprint" class="touch-btn">Sprint</div>
+      <div id="btn-crouch" class="touch-btn">Crouch</div>
+    </div>
+  </div>
+
+  <!-- ===== rotate-to-landscape prompt ===== -->
+  <div id="rotate-prompt" class="hidden">
+    <div class="text-6xl mb-3">📱</div>
+    <div class="text-amber-300 text-2xl font-bold">Rotate your phone</div>
+    <div class="text-stone-300 text-sm mt-2">Iya plays best in landscape.</div>
+  </div>
+
   <!-- ================= scripts ================= -->
   <script src="src/state.js"></script>
   <script src="src/managers/Storage.js"></script>
@@ -275,6 +322,7 @@
   <script src="src/engine/OrbitCameraRig.js"></script>
   <script src="src/engine/Minimap.js"></script>
   <script src="src/engine/Input.js"></script>
+  <script src="src/engine/TouchControls.js"></script>
   <script src="src/entities/Player3D.js"></script>
   <script src="src/entities/Guard3D.js"></script>
   <script src="src/game/Level3D.js"></script>

@@ -9,9 +9,10 @@ class World3D {
     this.scene.background = new THREE.Color(0x0a0710);
     this.scene.fog = new THREE.FogExp2(0x0a0710, 0.018);
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.shadowMap.enabled = true;
+    this.lowSpec = !!window.MOBILE;          // phones: skip shadows, cap resolution
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.lowSpec });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.lowSpec ? 1.5 : 2));
+    this.renderer.shadowMap.enabled = !this.lowSpec;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputEncoding = THREE.sRGBEncoding;
 

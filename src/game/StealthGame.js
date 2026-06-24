@@ -38,6 +38,7 @@ class StealthGame {
     this.buildAct();
     this.running = true;
     window.__stealth = this;
+    if(window.MOBILE && window.TouchControls && !this.touch){ this.touch = new TouchControls(this.input); document.body.classList.add('playing'); }
     if(window.UI){ UI.showHUD(); UI.updateHUD(); }
     if(window.Sound){ Sound.resume(); Sound.startAmbient(); }
     if(window.Settings && window.Sound) Settings.applyAudio();
@@ -432,6 +433,6 @@ class StealthGame {
 
   quitToTitle(){ this.running = false; window.__stealth = null; if(window.UI) UI.showMenu(); }
 
-  destroy(){ this.running = false; this.input.destroy(); }
+  destroy(){ this.running = false; this.input.destroy(); if(this.touch){ this.touch.destroy(); this.touch = null; } document.body.classList.remove('playing'); }
 }
 window.StealthGame = StealthGame;

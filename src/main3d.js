@@ -16,6 +16,28 @@
     box.textContent = '⚠ ' + (e.message || e.error) + '\n' + (e.filename||'').split('/').pop() + ':' + e.lineno;
   });
 
+  // --- mobile detection (must run before any World3D is created) ---
+  const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
+  window.MOBILE = hasTouch && coarse;
+  if(window.MOBILE) document.body.classList.add('mobile');
+
+  function updateOrientation(){
+    if(!window.MOBILE) return;
+    const portrait = window.innerHeight > window.innerWidth;
+    const el = document.getElementById('rotate-prompt');
+    if(el){ el.classList.toggle('hidden', !portrait); el.classList.toggle('flex', portrait); }
+  }
+  window.addEventListener('resize', updateOrientation);
+  window.addEventListener('orientationchange', updateOrientation);
+
+  window.goFullscreen = function(){
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if(req) req.call(el).catch(()=>{});
+    try { if(screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(()=>{}); } catch(_){}
+  };
+
   const canvas = document.getElementById('c');
   let world = null;
   let idleRAF = null;
@@ -50,6 +72,7 @@
   window.addEventListener('load', () => {
     if(window.Settings){ Settings.load(); if(window.Sound){ Sound.musicVol=Settings.musicVol; Sound.sfxVol=Settings.sfxVol; } }
     UI._refreshContinue();
+    updateOrientation();
     startIdle();
   });
 })();

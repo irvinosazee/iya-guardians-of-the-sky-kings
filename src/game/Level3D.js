@@ -124,7 +124,7 @@ class Level3D {
   }
 
   _embers(x, y, z){
-    const N = 18, pos = new Float32Array(N*3);
+    const N = window.MOBILE ? 8 : 18, pos = new Float32Array(N*3);
     for(let i=0;i<N;i++){ pos[i*3]=x+(Math.random()-0.5)*0.3; pos[i*3+1]=y+Math.random()*0.5; pos[i*3+2]=z+(Math.random()-0.5)*0.3; }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
     const mat = new THREE.PointsMaterial({ color:0xffb04a, size:0.12, transparent:true, opacity:0.9, depthWrite:false });
