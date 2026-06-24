@@ -15,6 +15,7 @@ class Level3D {
     this.bushes = [];       // {x,z,r}
     this.muds = [];         // {x,z,r}
     this.brazierFires = [];
+    this.lights = [];       // {x,z,range} for light/shadow stealth
     this.build();
   }
 
@@ -93,6 +94,8 @@ class Level3D {
     gate.rotation.y = Math.PI; scene.add(gate); this.gate = gate;
     const gateLight = new THREE.PointLight(0xf0c040, 0.8, 10); gateLight.position.set(this.exit.x, 2.5, this.exit.z);
     scene.add(gateLight);
+    this.lights.push({ x:this.exit.x, z:this.exit.z, range:6 });
+    const gGlow = MeshFactory.glow(0xf0c040, 4); gGlow.position.set(this.exit.x, 1.6, this.exit.z); scene.add(gGlow);
 
     // braziers + warm point lights + ember points
     [[5,3],[13,8],[20,12],[9,12]].forEach(([c,r])=>{
@@ -100,6 +103,8 @@ class Level3D {
       this.brazierFires.push(bz.getObjectByName('fire'));
       const pl = new THREE.PointLight(0xff8a30, 1.1, 9, 2); pl.position.set(this.wx(c), 1.6, this.wz(r));
       scene.add(pl);
+      this.lights.push({ x:this.wx(c), z:this.wz(r), range:8 });
+      const glow = MeshFactory.glow(0xff9030, 3.2); glow.position.set(this.wx(c), 1.5, this.wz(r)); scene.add(glow);
       this._embers(this.wx(c), 1.5, this.wz(r));
     });
 

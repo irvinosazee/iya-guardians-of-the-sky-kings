@@ -13,15 +13,27 @@ class Player3D {
     this.heading = 0;              // facing angle (radians, XZ)
     this.moving = false;
     this.hidden = false;
-    this._bob = 0;
+    this.stance = 'stand';         // 'stand' | 'crouch' | 'sprint'
+    this.noiseFactor = 1;          // multiplies hearing radius
+    this._bob = 0; this._scaleY = 1;
   }
 
   get position(){ return this.mesh.position; }
 
-  // worldDir: {x,z} already rotated into world space; walls: array of {minX,maxX,minZ,maxZ}
-  update(worldDir, dt, walls, inMud, canDash){
-    let speed = this.baseSpeed * (inMud && !canDash ? 0.42 : 1);
+  // worldDir: world-space {x,z}; walls: AABBs; mods: {sprint, crouch}
+  update(worldDir, dt, walls, inMud, canDash, mods){
+    mods = mods || {};
+    this.stance = mods.crouch ? 'crouch' : (mods.sprint && worldDir.active ? 'sprint' : 'stand');
+    const stanceSpeed = this.stance === 'crouch' ? 0.5 : this.stance === 'sprint' ? 1.55 : 1;
+    this.noiseFactor = this.stance === 'crouch' ? 0.4 : this.stance === 'sprint' ? 1.9 : 1;
+
+    let speed = this.baseSpeed * stanceSpeed * (inMud && !canDash ? 0.42 : 1);
     this.moving = worldDir.active;
+
+    // crouch lowers the silhouette
+    const targetScaleY = this.stance === 'crouch' ? 0.7 : 1;
+    this._scaleY += (targetScaleY - this._scaleY) * 0.2;
+    this.mesh.scale.y = this._scaleY;
 
     if(this.moving){
       this.heading = Math.atan2(worldDir.z, worldDir.x);
@@ -40,6 +52,10 @@ class Player3D {
     const body = this.mesh.userData.body;
     if(body) body.position.y = 0.75 + Math.abs(Math.sin(this._bob)) * (this.moving ? 0.07 : 0.02);
     this.mesh.userData.head && (this.mesh.userData.head.position.y = 1.32 + Math.sin(this._bob)*0.01);
+    // arm swing
+    const swing = Math.sin(this._bob) * (this.moving ? 0.7 : 0.05);
+    if(this.mesh.userData.armL) this.mesh.userData.armL.rotation.z = swing;
+    if(this.mesh.userData.armR) this.mesh.userData.armR.rotation.z = -swing;
   }
 
   _blocked(x, z, walls){

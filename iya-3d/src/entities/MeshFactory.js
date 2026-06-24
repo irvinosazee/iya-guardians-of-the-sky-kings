@@ -150,8 +150,29 @@ const MeshFactory = {
     // facing pip (+X)
     const pip = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), this.mat(0xffe9b0, { emissive: 0x554000, emissiveIntensity: 0.5 }));
     pip.position.set(0.3, 1.32, 0); grp.add(pip);
+    // arms (pivot at shoulder; swing while walking)
+    const armMat = this.mat(0xc4502e, { roughness: 0.7 });
+    const mkArm = (side) => {
+      const pivot = new THREE.Group(); pivot.position.set(0, 1.0, side * 0.36);
+      const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.42, 4, 8), armMat);
+      arm.position.y = -0.24; arm.castShadow = true; pivot.add(arm); grp.add(pivot); return pivot;
+    };
+    grp.userData.armL = mkArm(1); grp.userData.armR = mkArm(-1);
     grp.userData.body = body; grp.userData.head = head;
     return grp;
+  },
+
+  /* additive glow halo (fake bloom) */
+  glow(color, size){
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const ctx = cv.getContext('2d');
+    const g = ctx.createRadialGradient(32,32,0,32,32,32);
+    g.addColorStop(0,'rgba(255,255,255,0.9)'); g.addColorStop(0.4,'rgba(255,255,255,0.35)'); g.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,64,64);
+    const tex = new THREE.CanvasTexture(cv);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, color, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false }));
+    sprite.scale.set(size, size, size);
+    return sprite;
   },
 
   guard(){

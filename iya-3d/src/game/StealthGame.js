@@ -70,6 +70,8 @@ class StealthGame {
     this.objectiveTaken = false;
     this.detection = 0;
     this.complete = false;
+    this.cinematic = null;
+    this._pebbles = [];
     this._buildIndicators();
 
     // objective waypoint beam
@@ -93,11 +95,13 @@ class StealthGame {
   }
 
   _buildIndicators(){
-    // off-screen-ish objective arrow on the ground
-    const arrowGeo = new THREE.ConeGeometry(0.35, 0.9, 4);
-    arrowGeo.rotateX(Math.PI/2);
-    this.locator = new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({ color:0xf0c040 }));
-    this.locator.position.y = 0.1; this.world.scene.add(this.locator);
+    // flat chevron arrow on the ground, pointing +X (aimed via rotation.y)
+    const sh = new THREE.Shape();
+    sh.moveTo(0.55, 0); sh.lineTo(-0.15, 0.34); sh.lineTo(0.02, 0); sh.lineTo(-0.15, -0.34); sh.closePath();
+    const arrowGeo = new THREE.ShapeGeometry(sh);
+    arrowGeo.rotateX(-Math.PI/2);                       // lay flat on the ground
+    this.locator = new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({ color:0xf0c040, transparent:true, opacity:0.9 }));
+    this.locator.position.y = 0.08; this.world.scene.add(this.locator);
 
     // noise ring
     this.noiseRing = new THREE.Mesh(
@@ -144,7 +148,8 @@ class StealthGame {
     if(!this.running) return;
     const dt = Math.min(0.05, (now - this._t0) / 1000);
     this._t0 = now;
-    if(!this.paused && !this.uiPaused && !this.complete) this._tick(dt, now);
+    if(this.cinematic){ this._updateCinematic(dt, now); }
+    else if(!this.paused && !this.uiPaused && !this.complete) this._tick(dt, now);
     else if((this.complete || this.uiPaused) && this.rig){ this.rig.update(dt, this.level && this.level.wallMeshes, { moving:false, reduceMotion: window.Settings && Settings.reduceMotion }); }
     this.level && this.level.update(now);
     this.world.render();
@@ -176,7 +181,11 @@ class StealthGame {
     const worldDir = { x: wl?wx/wl:0, z: wl?wz/wl:0, active: intent.active };
 
     const inMud = this.level.muds.some(m => (p.x-m.x)**2 + (p.z-m.z)**2 < m.r*m.r);
-    this.player.update(worldDir, dt, this.level.walls, inMud, GameState.canMudDash);
+    const mods = this.input.modifiers();
+    this.player.update(worldDir, dt, this.level.walls, inMud, GameState.canMudDash, mods);
+
+    // distraction throw (E) — pebble lands ahead and pulls guards to investigate
+    if(this.input.consumeThrow()) this.throwDistraction();
     this.player.hidden = this.level.bushes.some(b => (p.x-b.x)**2 + (p.z-b.z)**2 < b.r*b.r);
     this.player.mesh.userData.body && (this.player.mesh.userData.body.material.opacity = this.player.hidden ? 0.55 : 1,
       this.player.mesh.userData.body.material.transparent = this.player.hidden);
@@ -196,17 +205,22 @@ class StealthGame {
       if((p.x-g.position.x)**2 + (p.z-g.position.z)**2 < 1.1) this.collect(g);
     }
 
+    // light & shadow stealth: exposure 0 (dark) .. 1 (bright) scales how fast you're seen
+    const exposure = this._lightExposure(p);
+    const seenScale = 0.55 + exposure * 0.9;
+
     // detection
+    const effNoise = GameState.noiseMultiplier * this.player.noiseFactor;
     let anySeen = false, anyHeard = false;
     this.guards.forEach(gd => {
-      const res = gd.perceive(this.player, this.level.wallMeshes, this.player.hidden, GameState.noiseMultiplier);
+      const res = gd.perceive(this.player, this.level.wallMeshes, this.player.hidden, effNoise);
       if(res.seen){ anySeen = true; gd.state = 'alert'; gd.investigate = { x:p.x, z:p.z }; gd.lastSeenPos = { x:p.x, z:p.z }; }
       else if(res.heard && gd.state === 'calm'){ gd.state = 'suspicious'; gd.investTimer = 1.2; }
       if(res.heard) anyHeard = true;
       gd.updateAware(res.seen, dt);
       gd.update(dt);
     });
-    if(anySeen) this.detection += dt * this.RATE_SEEN * this._detectMul;
+    if(anySeen) this.detection += dt * this.RATE_SEEN * this._detectMul * seenScale;
     else if(anyHeard) this.detection += dt * this.RATE_HEARD * this._detectMul;
     else this.detection -= dt * this.RATE_DECAY;
     this.detection = Math.max(0, Math.min(100, this.detection));
@@ -214,6 +228,7 @@ class StealthGame {
 
     // footsteps + noise ring
     if(this.player.moving && now - this._lastStep > 270){ this._lastStep = now; if(window.Sound) Sound.footstep(); }
+    this._updatePebbles(dt);
     this._updateIndicators(now);
     this._checkExit();
 
@@ -230,9 +245,9 @@ class StealthGame {
       if(dist > 2.5){
         const a = Math.atan2(dz, dx);
         this.locator.visible = true;
-        this.locator.position.set(p.x + Math.cos(a)*1.6, 0.1, p.z + Math.sin(a)*1.6);
-        this.locator.rotation.z = -a;
-        this.locator.material.opacity = 0.6 + 0.4*Math.sin(now*0.006);
+        this.locator.position.set(p.x + Math.cos(a)*1.7, 0.08, p.z + Math.sin(a)*1.7);
+        this.locator.rotation.y = -a;                  // flat arrow faces +X -> aim by yaw
+        this.locator.material.opacity = 0.6 + 0.35*Math.sin(now*0.006);
       } else this.locator.visible = false;
     } else this.locator.visible = false;
 
@@ -249,7 +264,7 @@ class StealthGame {
 
     if(this.player.moving){
       this.noiseRing.visible = true;
-      const r = 6 * GameState.noiseMultiplier;
+      const r = 6 * GameState.noiseMultiplier * (this.player.noiseFactor || 1);
       this.noiseRing.scale.set(r, r, r);
       this.noiseRing.position.set(p.x, 0.05, p.z);
       this.noiseRing.material.opacity = 0.18 + 0.07*Math.sin(now*0.008);
@@ -272,6 +287,56 @@ class StealthGame {
     }
 
     if(this.minimap) this.minimap.update(this);
+  }
+
+  // brightest nearby light at a point -> 0 (shadow) .. 1 (bright)
+  _lightExposure(p){
+    let e = 0;
+    for(const L of this.level.lights){
+      const d = Math.hypot(p.x - L.x, p.z - L.z);
+      if(d < L.range) e = Math.max(e, 1 - d / L.range);
+    }
+    return e;
+  }
+
+  throwDistraction(){
+    const p = this.player.position, h = this.player.heading;
+    // pebble lands ~7 units ahead (or short if a wall is closer)
+    let range = 7;
+    const tx = p.x + Math.cos(h) * range, tz = p.z + Math.sin(h) * range;
+    const pebble = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), MeshFactory.mat(0xcfc2a0));
+    pebble.position.set(p.x, 1.0, p.z); this.world.scene.add(pebble);
+    const dur = 0.5; let t = 0;
+    const sx = p.x, sz = p.z;
+    this._pebbles = this._pebbles || [];
+    this._pebbles.push({ m:pebble, t:0, dur, sx, sz, tx, tz });
+    if(window.Sound) Sound.click();
+    UI.toast('You toss a pebble — a distraction');
+    // remember landing to ping guards when it lands
+    pebble.userData.land = { x:tx, z:tz };
+  }
+
+  _updatePebbles(dt){
+    if(!this._pebbles || !this._pebbles.length) return;
+    for(let i = this._pebbles.length - 1; i >= 0; i--){
+      const pb = this._pebbles[i]; pb.t += dt;
+      const k = Math.min(1, pb.t / pb.dur);
+      pb.m.position.x = pb.sx + (pb.tx - pb.sx) * k;
+      pb.m.position.z = pb.sz + (pb.tz - pb.sz) * k;
+      pb.m.position.y = 1.0 + Math.sin(k * Math.PI) * 1.4;   // arc
+      if(k >= 1){
+        // landed — nearby calm/suspicious guards investigate the spot
+        const L = pb.m.userData.land;
+        if(window.Sound) Sound.footstep();
+        this.guards.forEach(g => {
+          if(g.state !== 'alert' && Math.hypot(g.position.x-L.x, g.position.z-L.z) < 12){
+            g.state = 'suspicious'; g.investigate = { x:L.x, z:L.z }; g.investTimer = 2.2; g.lastSeenPos = { x:L.x, z:L.z };
+            g.state = 'alert'; // walk to it, then revert via its own logic
+          }
+        });
+        this.world.scene.remove(pb.m); this._pebbles.splice(i, 1);
+      }
+    }
   }
 
   collect(g){
@@ -303,8 +368,8 @@ class StealthGame {
     UI.updateHUD();
     if(window.autosave) autosave();
     if(window.Sound) Sound.caught();
-    if(!(window.Settings && Settings.reduceMotion)) this._flash();
-    this.guards.forEach(g => { g.state='calm'; g.investigate=null; g.investTimer=0; });
+    if(!(window.Settings && Settings.reduceMotion)){ this._flash(); if(this.rig) this.rig.ddist = Math.max(this.rig.minDist, this.rig.dist - 3.5); }  // quick zoom punch
+    this.guards.forEach(g => { g.state='calm'; g.investigate=null; g.investTimer=0; g.aware = 0; });
     if(GameState.hp <= 0){
       GameState.hp = GameState.maxHealth;
       this.complete = true;
@@ -351,7 +416,17 @@ class StealthGame {
     });
   }
 
-  win(){ this.running = false; if(window.GameSave) GameSave.clear(); if(window.UI) UI.showVictory(); }
+  win(){ this.cinematic = { mode:'win', t:0 }; }
+
+  _updateCinematic(dt, now){
+    this.cinematic.t += dt;
+    if(this.cinematic.mode === 'win'){
+      if(!(window.Settings && Settings.reduceMotion)) this.rig.yaw += dt * 0.6;   // slow orbit
+      this.rig.update(dt, this.level && this.level.wallMeshes, { moving:false });
+      this.level && this.level.update(now);
+      if(this.cinematic.t > 2.6){ this.cinematic = null; this.running = false; if(window.GameSave) GameSave.clear(); if(window.UI) UI.showVictory(); }
+    }
+  }
 
   restartAct(){ this.complete = false; this.detection = 0; this.buildAct(); this.refreshObjective(); this.showActBanner(); }
 

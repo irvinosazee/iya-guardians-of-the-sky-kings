@@ -13,7 +13,12 @@ class Input {
     this.drag = { active:false, dx:0, dy:0, lx:0, ly:0 };
     this.zoomDelta = 0;
 
-    this._onDown = (e) => { this.keys[e.key.toLowerCase()] = true; };
+    this._throw = false;
+    this._onDown = (e) => {
+      const k = e.key.toLowerCase();
+      this.keys[k] = true;
+      if(k === 'e') this._throw = true;
+    };
     this._onUp   = (e) => { this.keys[e.key.toLowerCase()] = false; };
     window.addEventListener('keydown', this._onDown);
     window.addEventListener('keyup', this._onUp);
@@ -52,6 +57,17 @@ class Input {
     if(len > 0){ x /= len; z /= len; }
     return { x, z, active: len > 0 };
   }
+
+  // movement modifiers
+  modifiers(){
+    return {
+      sprint: this.down('shift'),
+      crouch: this.down('c'),     // hold C (Ctrl avoided — Ctrl+W closes the tab)
+    };
+  }
+
+  // consume a one-shot throw press (E)
+  consumeThrow(){ const t = this._throw; this._throw = false; return t; }
 
   // arrows -> camera. yaw: left/right, pitch: up/down
   camIntent(){
