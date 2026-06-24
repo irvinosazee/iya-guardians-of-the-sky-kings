@@ -71,6 +71,13 @@ class StealthGame {
     this.detection = 0;
     this.complete = false;
     this._buildIndicators();
+
+    // objective waypoint beam
+    this.beam = MeshFactory.beam();
+    this.world.scene.add(this.beam);
+
+    // minimap
+    this.minimap = new Minimap(this.level);
   }
 
   _teardownLevel(){
@@ -196,6 +203,7 @@ class StealthGame {
       if(res.seen){ anySeen = true; gd.state = 'alert'; gd.investigate = { x:p.x, z:p.z }; gd.lastSeenPos = { x:p.x, z:p.z }; }
       else if(res.heard && gd.state === 'calm'){ gd.state = 'suspicious'; gd.investTimer = 1.2; }
       if(res.heard) anyHeard = true;
+      gd.updateAware(res.seen, dt);
       gd.update(dt);
     });
     if(anySeen) this.detection += dt * this.RATE_SEEN * this._detectMul;
@@ -228,6 +236,17 @@ class StealthGame {
       } else this.locator.visible = false;
     } else this.locator.visible = false;
 
+    // waypoint beam sits on the objective
+    if(this.beam){
+      if(target){
+        this.beam.visible = true;
+        this.beam.position.set(target.x, 0, target.z);
+        const pulse = 0.5 + 0.5*Math.sin(now*0.004);
+        this.beam.userData.cyl.material.opacity = 0.12 + 0.10*pulse;
+        this.beam.userData.ring.scale.setScalar(1 + 0.15*pulse);
+      } else this.beam.visible = false;
+    }
+
     if(this.player.moving){
       this.noiseRing.visible = true;
       const r = 6 * GameState.noiseMultiplier;
@@ -235,6 +254,24 @@ class StealthGame {
       this.noiseRing.position.set(p.x, 0.05, p.z);
       this.noiseRing.material.opacity = 0.18 + 0.07*Math.sin(now*0.008);
     } else this.noiseRing.visible = false;
+
+    // contextual prompt + hidden badge
+    if(window.UI){
+      if(this.player.hidden){ UI.setHidden(true); UI.setContext('You are hidden — guards can’t see you here', '🌿'); }
+      else {
+        UI.setHidden(false);
+        if(target){
+          const d = Math.hypot(target.x-p.x, target.z-p.z);
+          if(!this.objectiveTaken && d < 2.4) UI.setContext('Walk over the scroll to steal the plans', '✋');
+          else if(this.objectiveTaken && d < 3) UI.setContext('Escape through the glowing gate', '🚪');
+          else UI.setContext(null);
+        } else UI.setContext(null);
+      }
+      // danger vignette from global detection
+      UI.setDanger(this.detection > 30 ? (this.detection-30)/70 * 0.9 : 0);
+    }
+
+    if(this.minimap) this.minimap.update(this);
   }
 
   collect(g){

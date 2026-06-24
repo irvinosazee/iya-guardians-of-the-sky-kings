@@ -12,11 +12,12 @@ class OrbitCameraRig {
     this.target = target;
 
     this.yaw = Math.PI / 2;          // ground-forward = (cos yaw, sin yaw)
-    this.pitch = 0.5;                // radians above the horizon
-    this.dist = 11;
-    this.minDist = 5; this.maxDist = 18;
-    this.minPitch = 0.12; this.maxPitch = 1.30;
-    this.focusHeight = 1.45;
+    this.pitch = 0.28;               // radians above horizon — low, so you see AHEAD
+    this.dist = 9;
+    this.minDist = 4.5; this.maxDist = 16;
+    this.minPitch = 0.06; this.maxPitch = 1.15;   // can't quite top-down or ground-level
+    this.focusHeight = 1.5;
+    this.lookAhead = 2.4;            // aim slightly ahead of Adesua toward the horizon
     this.sens = 1;                   // multiplied by Settings sensitivity
 
     // damped (display) values
@@ -86,7 +87,12 @@ class OrbitCameraRig {
     }
 
     this.camera.position.set(camX, camY, camZ);
-    this.camera.lookAt(this.focus);
+    // look slightly ahead of and above the focus so the path ahead is visible
+    this.camera.lookAt(
+      this.focus.x + fx * this.lookAhead,
+      this.focus.y + 0.35,
+      this.focus.z + fz * this.lookAhead
+    );
   }
 }
 window.OrbitCameraRig = OrbitCameraRig;

@@ -15,7 +15,7 @@ class World3D {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputEncoding = THREE.sRGBEncoding;
 
-    this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
+    this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 200);   // wider FOV = more peripheral view
     this.camera.position.set(0, 14, 14);
 
     this._buildLights();

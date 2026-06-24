@@ -32,6 +32,10 @@ class Guard3D {
     this.bubble = MeshFactory.bubbleSprite();
     this.bubble.position.set(0, 2.2, 0); this.mesh.add(this.bubble);
 
+    this.aware = 0;                              // 0..1 how much THIS guard notices the player
+    this.eye = MeshFactory.eyeMeter();
+    this.eye.position.set(0, 2.7, 0); this.mesh.add(this.eye);
+
     this._ray = new THREE.Raycaster();
     this._origin = new THREE.Vector3();
     this._dirv = new THREE.Vector3();
@@ -107,6 +111,13 @@ class Guard3D {
       if(this.state === 'alert' && window.Sound) Sound.alert();
     }
     this._prevState = this.state;
+
+    // eye-meter reflects this guard's personal awareness
+    if(this.aware > 0.02){
+      this.eye.visible = true;
+      const col = this.aware > 0.66 ? '#ff3030' : this.aware > 0.33 ? '#f0c040' : '#9fe0a0';
+      this.eye.userData.draw(this.aware, col);
+    } else this.eye.visible = false;
   }
 
   // returns { seen, heard }
@@ -142,6 +153,12 @@ class Guard3D {
     this.cone.geometry.dispose();
     const geo = new THREE.CircleGeometry(this.visionRadius, 28, -this.fov/2, this.fov);
     geo.rotateX(-Math.PI/2); this.cone.geometry = geo;
+  }
+
+  // advance personal awareness (called by the game each frame)
+  updateAware(seen, dt){
+    if(seen) this.aware = Math.min(1, this.aware + dt * 1.4);
+    else this.aware = Math.max(0, this.aware - dt * 0.8);
   }
 
   destroy(){

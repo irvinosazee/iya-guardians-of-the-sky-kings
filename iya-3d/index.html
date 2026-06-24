@@ -77,6 +77,27 @@
     <div id="ab-sub" class="text-orange-400 text-2xl mt-2" style="text-shadow:0 2px 8px #000"></div>
   </div>
 
+  <!-- danger edge vignette (rises as detection rises) -->
+  <div id="danger-vignette" class="fixed inset-0 z-20 pointer-events-none" style="box-shadow:inset 0 0 130px 36px rgba(255,30,30,.9);opacity:0;transition:opacity .12s"></div>
+
+  <!-- HIDDEN badge -->
+  <div id="hidden-badge" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-4 py-1.5 rounded-full pointer-events-none"
+       style="background:rgba(20,40,20,.82);border:1px solid rgba(120,220,140,.5);box-shadow:0 0 24px rgba(60,180,90,.35)">
+    <span class="text-emerald-300 text-lg">🌿</span><span class="text-emerald-200 text-sm font-semibold tracking-wider">HIDDEN</span>
+  </div>
+
+  <!-- minimap -->
+  <div id="minimap-wrap" class="hidden fixed top-[68px] right-3 z-20 rounded-lg overflow-hidden pointer-events-none"
+       style="border:1px solid rgba(240,192,64,.35);box-shadow:0 4px 16px rgba(0,0,0,.5)">
+    <canvas id="minimap" width="150" height="150" style="display:block;background:rgba(10,7,4,.78)"></canvas>
+  </div>
+
+  <!-- contextual prompt -->
+  <div id="context-prompt" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-4 py-2 rounded-full pointer-events-none"
+       style="background:rgba(16,10,7,.9);border:1px solid rgba(240,192,64,.45)">
+    <span id="ctx-icon" class="text-amber-300">▸</span><span id="ctx-text" class="text-amber-100 text-sm font-semibold"></span>
+  </div>
+
   <!-- tutorial tip -->
   <div id="tutorial-tip" class="hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3 py-1.5 rounded-full bg-stone-900/92 ring-1 ring-amber-500/50 max-w-[88%]">
     <span class="text-amber-300 text-sm">👁️</span>
@@ -169,8 +190,9 @@
 
   <!-- ===== Pause ===== -->
   <div id="pause-menu" class="hidden fixed inset-0 z-50 flex-col items-center justify-center bg-black/75">
-    <div class="bg-stone-900/97 ring-1 ring-amber-600/50 rounded-2xl p-6 w-64">
-      <h2 class="text-2xl text-amber-300 font-bold text-center mb-4">Paused</h2>
+    <div class="bg-stone-900/97 ring-1 ring-amber-600/50 rounded-2xl p-6 w-72">
+      <h2 class="text-2xl text-amber-300 font-bold text-center mb-2">Paused</h2>
+      <div id="pause-objective" class="text-center text-[13px] text-amber-100 mb-4 px-2"></div>
       <div class="flex flex-col gap-1.5 text-stone-100">
         <button onclick="UI.resumeGame()" class="menu-btn text-left px-4 py-2 rounded-lg">▶  Resume</button>
         <button onclick="UI.openSettings(true)" class="menu-btn text-left px-4 py-2 rounded-lg">⚙  Settings</button>
@@ -219,6 +241,7 @@
   <script src="src/entities/MeshFactory.js"></script>
   <script src="src/engine/World3D.js"></script>
   <script src="src/engine/OrbitCameraRig.js"></script>
+  <script src="src/engine/Minimap.js"></script>
   <script src="src/engine/Input.js"></script>
   <script src="src/entities/Player3D.js"></script>
   <script src="src/entities/Guard3D.js"></script>

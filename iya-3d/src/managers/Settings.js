@@ -10,7 +10,7 @@ const Settings = {
   difficulty: 'normal',     // 'easy' | 'normal' | 'hard'
   reduceMotion: false,
   camSensitivity: 1,        // mouse/arrow camera sensitivity multiplier
-  camZoom: 11,              // remembered orbit distance
+  camZoom: 9,               // remembered orbit distance
 
   // one-time onboarding flags
   tutorialDone: false,

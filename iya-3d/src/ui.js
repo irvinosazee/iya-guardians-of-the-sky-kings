@@ -19,7 +19,8 @@ const _open = (id) => !document.getElementById(id).classList.contains('hidden');
 
 const UI = {
   showHUD(){ _show('hud'); this.updateHUD(); },
-  hideHUD(){ _hide('hud'); },
+  hideHUD(){ _hide('hud'); this.setContext(null); this.setHidden(false); this.setDanger(0);
+    const mm=document.getElementById('minimap-wrap'); if(mm) mm.classList.add('hidden'); },
 
   setObjective(t){ const e=document.getElementById('hud-objective'); if(e) e.textContent='► Objective: '+t; },
 
@@ -44,6 +45,17 @@ const UI = {
   },
 
   toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('opacity-100'); t.classList.remove('opacity-0'); clearTimeout(this._tt); this._tt=setTimeout(()=>{ t.classList.add('opacity-0'); t.classList.remove('opacity-100'); },2400); },
+
+  // contextual prompt (null/'' hides it)
+  setContext(text, icon){
+    const el=document.getElementById('context-prompt');
+    if(!text){ el.classList.add('hidden'); el.classList.remove('flex'); return; }
+    document.getElementById('ctx-text').textContent=text;
+    document.getElementById('ctx-icon').textContent=icon||'▸';
+    el.classList.remove('hidden'); el.classList.add('flex');
+  },
+  setHidden(on){ const el=document.getElementById('hidden-badge'); if(on){ el.classList.remove('hidden'); el.classList.add('flex'); } else { el.classList.add('hidden'); el.classList.remove('flex'); } },
+  setDanger(v){ document.getElementById('danger-vignette').style.opacity = Math.max(0, Math.min(1, v)); },
 
   actBanner(title, sub){
     document.getElementById('ab-title').textContent=title;
@@ -75,7 +87,7 @@ const UI = {
 
   // pause
   pauseOpen(){ return _open('pause-menu'); },
-  openPause(){ if(!window.__stealth) return; __stealth.uiPaused=true; _show('pause-menu'); if(window.Sound) Sound.click(); },
+  openPause(){ if(!window.__stealth) return; __stealth.uiPaused=true; const o=document.getElementById('pause-objective'); if(o) o.textContent=document.getElementById('hud-objective').textContent.replace('► ',''); _show('pause-menu'); if(window.Sound) Sound.click(); },
   resumeGame(){ _hide('pause-menu'); if(window.__stealth && this._noModals()) __stealth.uiPaused=false; if(window.Sound) Sound.click(); },
   restartAct(){ _hide('pause-menu'); if(window.__stealth){ __stealth.uiPaused=false; __stealth.restartAct(); } },
   quitToTitle(){ _hide('pause-menu'); if(window.__stealth) __stealth.quitToTitle(); },

@@ -177,6 +177,41 @@ const MeshFactory = {
     return grp;
   },
 
+  /* tall translucent beam of light marking the objective */
+  beam(){
+    const grp = new THREE.Group();
+    const geo = new THREE.CylinderGeometry(0.45, 0.6, 14, 16, 1, true);
+    const mat = new THREE.MeshBasicMaterial({ color:this.COL.gold, transparent:true, opacity:0.18, side:THREE.DoubleSide, depthWrite:false });
+    const cyl = new THREE.Mesh(geo, mat); cyl.position.y = 7;
+    grp.add(cyl);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.85, 24),
+      new THREE.MeshBasicMaterial({ color:this.COL.gold, transparent:true, opacity:0.5, side:THREE.DoubleSide, depthWrite:false }));
+    ring.rotation.x = -Math.PI/2; ring.position.y = 0.06; grp.add(ring);
+    grp.userData.cyl = cyl; grp.userData.ring = ring;
+    return grp;
+  },
+
+  /* per-guard "eye" detection meter billboard */
+  eyeMeter(){
+    const cv = document.createElement('canvas'); cv.width = 96; cv.height = 40;
+    const ctx = cv.getContext('2d');
+    const tex = new THREE.CanvasTexture(cv);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false }));
+    sprite.scale.set(1.3, 0.55, 1); sprite.visible = false;
+    sprite.userData.draw = (fill, color) => {
+      ctx.clearRect(0,0,96,40);
+      // eye glyph
+      ctx.strokeStyle = color; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(20,20,14,9,0,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(20,20,4,0,Math.PI*2); ctx.fill();
+      // bar
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(40,14,48,12);
+      ctx.fillStyle = color; ctx.fillRect(40,14,48*Math.max(0,Math.min(1,fill)),12);
+      tex.needsUpdate = true;
+    };
+    return sprite;
+  },
+
   /* a floating colored billboard sprite for !/? bubbles */
   bubbleSprite(){
     const cv = document.createElement('canvas'); cv.width = cv.height = 64;
