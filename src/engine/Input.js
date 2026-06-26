@@ -15,7 +15,7 @@ class Input {
     this._throw = false;
 
     // touch state (written by TouchControls)
-    this.touchMove = { x:0, z:0, active:false };
+    this.touchMove = { x:0, z:0, active:false, mag:0 };
     this.touchBtn  = { sprint:false, crouch:false };
 
     this._ptrs = new Map();      // active canvas touch pointers
@@ -82,7 +82,7 @@ class Input {
     if(this.touchMove.active){
       const { x, z } = this.touchMove;
       const len = Math.hypot(x, z) || 1;
-      return { x:x/len, z:z/len, active:true, mag: Math.min(1, Math.hypot(x,z)) };
+      return { x:x/len, z:z/len, active:true, mag: this.touchMove.mag };   // deadzone-remapped analog
     }
     let x = 0, z = 0;
     if(this.down('w')) z -= 1;
@@ -95,8 +95,9 @@ class Input {
   }
 
   modifiers(){
+    const stickFull = this.touchMove.active && this.touchMove.mag > 0.92;   // auto-sprint
     return {
-      sprint: this.down('shift') || this.touchBtn.sprint,
+      sprint: this.down('shift') || this.touchBtn.sprint || stickFull,
       crouch: this.down('c') || this.touchBtn.crouch,
     };
   }

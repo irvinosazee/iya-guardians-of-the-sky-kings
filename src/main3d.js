@@ -34,9 +34,15 @@
   window.goFullscreen = function(){
     const el = document.documentElement;
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
-    if(req) req.call(el).catch(()=>{});
+    if(req){ try { const r = req.call(el); if(r && r.catch) r.catch(()=>{}); } catch(_){ } }
     try { if(screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(()=>{}); } catch(_){}
   };
+
+  // capture the install prompt so we can offer "Add to Home Screen"
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); window.__deferredInstall = e;
+    const b = document.getElementById('install-btn'); if(b && window.MOBILE) b.classList.remove('hidden');
+  });
 
   const canvas = document.getElementById('c');
   let world = null;
@@ -74,5 +80,8 @@
     UI._refreshContinue();
     updateOrientation();
     startIdle();
+    // fade out the branded splash
+    const sp = document.getElementById('splash');
+    if(sp){ setTimeout(() => { sp.style.opacity = '0'; setTimeout(() => { sp.style.display = 'none'; }, 500); }, 500); }
   });
 })();

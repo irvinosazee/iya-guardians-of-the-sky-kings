@@ -53,10 +53,14 @@ class TouchControls {
     if(d > max){ dx = dx/d*max; dy = dy/d*max; }
     this.knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
     const nx = dx/max, nz = dy/max;        // screen: up(-y) = forward(-z)
-    const mag = Math.hypot(nx, nz);
+    const raw = Math.hypot(nx, nz);
+    const dead = 0.14;
+    // remap past the deadzone to 0..1 so small pushes still register cleanly
+    const mag = raw < dead ? 0 : (raw - dead) / (1 - dead);
     this.input.touchMove.x = nx;
     this.input.touchMove.z = nz;
-    this.input.touchMove.active = mag > 0.18;
+    this.input.touchMove.mag = Math.min(1, mag);
+    this.input.touchMove.active = mag > 0;
   }
 
   _btn(id, onDown, onUp){
@@ -72,14 +76,15 @@ class TouchControls {
 
   _wireButtons(){
     this._btn('btn-sprint',
-      (el) => { this.input.touchBtn.sprint = true; el.classList.add('held'); },
+      (el) => { this.input.touchBtn.sprint = true; el.classList.add('held'); if(window.Haptics) Haptics.tap(); },
       (el) => { this.input.touchBtn.sprint = false; el.classList.remove('held'); });
     this._btn('btn-crouch', (el) => {
       this.crouchOn = !this.crouchOn;
       this.input.touchBtn.crouch = this.crouchOn;
       el.classList.toggle('held', this.crouchOn);
+      if(window.Haptics) Haptics.tap();
     });
-    this._btn('btn-throw', () => { this.input._throw = true; });
+    this._btn('btn-throw', () => { this.input._throw = true; if(window.Haptics) Haptics.tap(); });
   }
 
   destroy(){

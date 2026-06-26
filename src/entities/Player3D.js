@@ -28,6 +28,9 @@ class Player3D {
     this.noiseFactor = this.stance === 'crouch' ? 0.4 : this.stance === 'sprint' ? 1.9 : 1;
 
     let speed = this.baseSpeed * stanceSpeed * (inMud && !canDash ? 0.42 : 1);
+    // analog: joystick lean -> creep, full push -> run (keyboard reports mag 1)
+    const m = (worldDir.mag != null) ? worldDir.mag : 1;
+    if(worldDir.active) speed *= Math.max(0.42, Math.pow(m, 1.25));
     this.moving = worldDir.active;
 
     // crouch lowers the silhouette

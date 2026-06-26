@@ -79,9 +79,40 @@
     @keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
     .pop{ animation:pop .25s ease-out; }
     @keyframes fadeUp{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+
+    /* bigger thumb buttons */
+    body.mobile .touch-btn{ width:70px; height:70px; font-size:13px; }
+    body.mobile #touch-stick{ width:132px; height:132px; }
+    body.mobile #touch-knob{ width:58px; height:58px; }
+
+    /* compact, thumb-friendly HUD on phones */
+    @media (pointer:coarse){
+      #hud{ padding:.4rem .6rem !important; gap:.35rem !important; }
+      #hud .text-\[13px\]{ font-size:11px; }
+      #hud-objective{ font-size:11px; }
+    }
+
+    /* bottom-sheet pause & settings on mobile */
+    body.mobile #pause-menu, body.mobile #settings-overlay{ justify-content:flex-end !important; }
+    body.mobile #pause-menu > div, body.mobile #settings-overlay > div{
+      width:100% !important; max-width:100% !important; border-radius:20px 20px 0 0;
+      padding-bottom:calc(env(safe-area-inset-bottom,0px) + 18px); animation:fadeUp .25s ease; }
+
+    /* bigger moat cells + larger forge buttons on mobile */
+    body.mobile #moat-grid{ max-width:96vw; gap:3px; }
+    @keyframes pulseGlow{0%,100%{box-shadow:0 4px 20px rgba(240,192,64,.45)}50%{box-shadow:0 4px 28px rgba(240,192,64,.8)}}
+    #btn-action{ animation:pulseGlow 1.1s ease-in-out infinite; }
   </style>
 </head>
 <body class="text-stone-100 select-none">
+  <!-- branded splash (shown immediately, fades after load) -->
+  <div id="splash" style="position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 38%,#241208,#07050c 70%);transition:opacity .5s;">
+    <img src="assets/brand/icon-192.png" alt="Iya" width="96" height="96" style="border-radius:22px;box-shadow:0 8px 30px rgba(0,0,0,.6)" />
+    <div style="color:#f0c040;font-size:34px;font-weight:bold;margin-top:14px;letter-spacing:2px">IYA</div>
+    <div style="color:#caa472;font-size:13px;margin-top:4px">Guardians of the Sky-Kings</div>
+    <div style="color:#7a6a4a;font-size:12px;margin-top:16px">loading…</div>
+  </div>
+
   <canvas id="c"></canvas>
 
   <!-- red flash on capture -->
@@ -176,6 +207,7 @@
     <button onclick="UI.newGame()" class="glow-btn mt-8 px-8 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-stone-900 font-bold text-lg">▶ New Game</button>
     <button id="continue-btn" onclick="UI.continueGame()" class="hidden glow-btn mt-2 px-6 py-2 rounded-lg chip text-emerald-300"></button>
     <button id="fs-btn" onclick="goFullscreen()" class="glow-btn mt-2 px-5 py-2 rounded-lg chip text-amber-200">⛶ Fullscreen</button>
+    <button id="install-btn" onclick="UI.installApp()" class="hidden glow-btn mt-2 px-5 py-2 rounded-lg chip text-emerald-300">⬇ Add to Home Screen</button>
     <div class="mt-8 flex flex-wrap justify-center gap-2 text-xs text-stone-300 max-w-2xl">
       <span class="chip rounded px-2 py-1">WASD · Move</span>
       <span class="chip rounded px-2 py-1">Drag · Look</span>
@@ -219,7 +251,7 @@
     </div>
     <p class="text-stone-300 text-sm mb-1">Cast collected materials into bronze plaques. Each grants a permanent gift.</p>
     <div id="forge-mats" class="text-amber-200 text-sm mb-4 font-mono"></div>
-    <div id="forge-cards" class="grid grid-cols-3 gap-4 flex-1 max-w-4xl"></div>
+    <div id="forge-cards" class="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1 max-w-4xl w-full overflow-auto"></div>
   </div>
 
   <!-- ===== Moat ===== -->
@@ -280,6 +312,7 @@
           <button data-diff="normal" class="diff-btn py-1.5 rounded-md bg-stone-800 hover:bg-stone-700">Normal</button>
           <button data-diff="hard" class="diff-btn py-1.5 rounded-md bg-stone-800 hover:bg-stone-700">Hard</button></div></div>
         <label class="flex items-center justify-between"><span>Reduce motion</span><input id="set-motion" type="checkbox" class="w-5 h-5 accent-amber-500"></label>
+        <label class="flex items-center justify-between"><span>Haptics (vibration)</span><input id="set-haptics" type="checkbox" class="w-5 h-5 accent-amber-500"></label>
         <button onclick="UI.resetProgress()" class="w-full mt-2 py-2 rounded-lg bg-red-900/70 hover:bg-red-800 text-red-100 text-sm">Reset all progress</button>
       </div>
     </div>
@@ -304,6 +337,10 @@
     </div>
   </div>
 
+  <!-- contextual action button (tap-to-interact, mobile) -->
+  <div id="btn-action" class="hidden fixed left-1/2 -translate-x-1/2 z-30 items-center justify-center px-6 py-3 rounded-full font-bold text-stone-900"
+       style="bottom:150px;background:linear-gradient(180deg,#ffe08a,#f0c040);box-shadow:0 4px 20px rgba(240,192,64,.45);"></div>
+
   <!-- ===== rotate-to-landscape prompt ===== -->
   <div id="rotate-prompt" class="hidden">
     <div class="text-6xl mb-3">📱</div>
@@ -317,6 +354,7 @@
   <script src="src/managers/Sound.js"></script>
   <script src="src/managers/Settings.js"></script>
   <script src="src/managers/Tutorial.js"></script>
+  <script src="src/managers/Haptics.js"></script>
   <script src="src/entities/MeshFactory.js"></script>
   <script src="src/engine/World3D.js"></script>
   <script src="src/engine/OrbitCameraRig.js"></script>

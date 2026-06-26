@@ -154,7 +154,26 @@ class StealthGame {
     else if((this.complete || this.uiPaused) && this.rig){ this.rig.update(dt, this.level && this.level.wallMeshes, { moving:false, reduceMotion: window.Settings && Settings.reduceMotion }); }
     this.level && this.level.update(now);
     this.world.render();
+    if(window.MOBILE) this._adaptPerf(dt);
     requestAnimationFrame(this._loop);
+  }
+
+  // watch frame time; if a phone is struggling, drop quality once
+  _adaptPerf(dt){
+    if(this._degraded) return;
+    this._fpsAcc = (this._fpsAcc || 0) + dt;
+    this._fpsN = (this._fpsN || 0) + 1;
+    if(this._fpsAcc >= 3){                       // sample ~3s
+      const fps = this._fpsN / this._fpsAcc;
+      if(fps < 40){
+        this._degraded = true;
+        try { this.world.renderer.setPixelRatio(1); } catch(e){}
+        if(this.level && this.level._emberSets) this.level._emberSets.forEach(p => p.visible = false);
+        if(this.noiseRing) this.noiseRing.visible = false;
+        if(window.UI) UI.toast('Performance mode on');
+      }
+      this._fpsAcc = 0; this._fpsN = 0;
+    }
   }
 
   _tick(dt, now){
@@ -179,7 +198,7 @@ class StealthGame {
     let wx = fx * (-intent.z) + rx * intent.x;
     let wz = fz * (-intent.z) + rz * intent.x;
     const wl = Math.hypot(wx, wz);
-    const worldDir = { x: wl?wx/wl:0, z: wl?wz/wl:0, active: intent.active };
+    const worldDir = { x: wl?wx/wl:0, z: wl?wz/wl:0, active: intent.active, mag: intent.mag };
 
     const inMud = this.level.muds.some(m => (p.x-m.x)**2 + (p.z-m.z)**2 < m.r*m.r);
     const mods = this.input.modifiers();
@@ -225,6 +244,10 @@ class StealthGame {
     else if(anyHeard) this.detection += dt * this.RATE_HEARD * this._detectMul;
     else this.detection -= dt * this.RATE_DECAY;
     this.detection = Math.max(0, Math.min(100, this.detection));
+    // haptic pulse the moment you first cross into "spotted"
+    const spotting = this.detection > 30;
+    if(spotting && !this._wasSpotting && window.Haptics) Haptics.spotted();
+    this._wasSpotting = spotting;
     if(this.detection >= 100) this.onCaught();
 
     // footsteps + noise ring
@@ -232,8 +255,32 @@ class StealthGame {
     this._updatePebbles(dt);
     this._updateIndicators(now);
     this._checkExit();
+    this._updateContextAction();
 
     if(window.UI){ UI.setAlert(this.detection); if(!this._hudT || now-this._hudT>250){ UI.updateHUD(); this._hudT=now; } }
+  }
+
+  // tap-to-interact: surface a contextual action button on mobile
+  _updateContextAction(){
+    if(!window.MOBILE || !window.UI) return;
+    const p = this.player.position;
+    let action = null;
+    if(!this.objectiveTaken && this.level.planItem && this.level.planItem.visible){
+      const d = Math.hypot(this.level.planItem.position.x - p.x, this.level.planItem.position.z - p.z);
+      if(d < 3.0) action = { label:'✋ Grab the plans', kind:'grab' };
+    } else if(this.objectiveTaken){
+      const d = Math.hypot(this.level.exit.x - p.x, this.level.exit.z - p.z);
+      if(d < 3.5) action = { label:'🚪 Escape', kind:'escape' };
+    }
+    this._ctxAction = action;
+    UI.setActionButton(action ? action.label : null);
+  }
+
+  doContextAction(){
+    if(!this._ctxAction) return;
+    if(window.Haptics) Haptics.tap();
+    if(this._ctxAction.kind === 'grab' && this.level.planItem && this.level.planItem.visible) this.collect(this.level.planItem);
+    else if(this._ctxAction.kind === 'escape') this.onExit();
   }
 
   _updateIndicators(now){
@@ -350,6 +397,7 @@ class StealthGame {
     else if(t === 'mudfish'){ GameState.materials.mudfish++; UI.toast('Mudfish +1'); }
     else if(t === 'plan'){ this.objectiveTaken = true; UI.toast('Plans stolen — reach the glowing gate →'); this.refreshObjective(); }
     if(window.Sound) Sound.pickup();
+    if(window.Haptics) Haptics.pickup();
     UI.updateHUD();
     if(window.autosave) autosave();
 
@@ -369,6 +417,7 @@ class StealthGame {
     UI.updateHUD();
     if(window.autosave) autosave();
     if(window.Sound) Sound.caught();
+    if(window.Haptics) Haptics.caught();
     if(!(window.Settings && Settings.reduceMotion)){ this._flash(); if(this.rig) this.rig.ddist = Math.max(this.rig.minDist, this.rig.dist - 3.5); }  // quick zoom punch
     this.guards.forEach(g => { g.state='calm'; g.investigate=null; g.investTimer=0; g.aware = 0; });
     if(GameState.hp <= 0){

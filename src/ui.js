@@ -19,7 +19,7 @@ const _open = (id) => !document.getElementById(id).classList.contains('hidden');
 
 const UI = {
   showHUD(){ _show('hud'); this.updateHUD(); },
-  hideHUD(){ _hide('hud'); this.setContext(null); this.setHidden(false); this.setDanger(0);
+  hideHUD(){ _hide('hud'); this.setContext(null); this.setHidden(false); this.setDanger(0); this.setActionButton(null);
     const mm=document.getElementById('minimap-wrap'); if(mm) mm.classList.add('hidden'); },
 
   setObjective(t){ const e=document.getElementById('hud-objective'); if(e) e.textContent='► Objective: '+t; },
@@ -56,6 +56,7 @@ const UI = {
   },
   setHidden(on){ const el=document.getElementById('hidden-badge'); if(on){ el.classList.remove('hidden'); el.classList.add('flex'); } else { el.classList.add('hidden'); el.classList.remove('flex'); } },
   setDanger(v){ document.getElementById('danger-vignette').style.opacity = Math.max(0, Math.min(1, v)); },
+  setActionButton(label){ const el=document.getElementById('btn-action'); if(!el) return; if(label){ el.textContent=label; el.classList.remove('hidden'); el.classList.add('flex'); } else { el.classList.add('hidden'); el.classList.remove('flex'); } },
 
   actBanner(title, sub){
     document.getElementById('ab-title').textContent=title;
@@ -103,6 +104,7 @@ const UI = {
     document.getElementById('set-bright').value=Math.round(S.brightness*100);
     document.getElementById('set-sens').value=Math.round(S.camSensitivity*100);
     document.getElementById('set-motion').checked=S.reduceMotion;
+    const hap=document.getElementById('set-haptics'); if(hap) hap.checked=S.haptics;
     document.getElementById('lbl-music').textContent=Math.round(S.musicVol*100)+'%';
     document.getElementById('lbl-sfx').textContent=Math.round(S.sfxVol*100)+'%';
     document.getElementById('lbl-bright').textContent=Math.round(S.brightness*100)+'%';
@@ -117,13 +119,14 @@ const UI = {
   showMenu(){ if(window.__stealth){ __stealth.destroy(); window.__stealth=null; } this.hideHUD(); _hide('victory'); _hide('pause-menu'); _show('menu'); this._refreshContinue(); if(window.startIdle) startIdle(); },
   showVictory(){ this.hideHUD(); document.getElementById('victory-stats').textContent=`Cowries gathered: ${GameState.cowries}     Plaques forged: ${Object.keys(GameState.ownedPlaques).length}/3`; _show('victory'); if(window.Sound) Sound.victory(); },
 
-  newGame(){ if(window.Sound){ Sound.resume(); Sound.click(); Sound.startAmbient(); } GameState.reset(); if(window.autosave) autosave();
+  newGame(){ if(window.Sound){ Sound.resume(); Sound.click(); Sound.startAmbient(); } if(window.MOBILE && window.goFullscreen) goFullscreen(); GameState.reset(); if(window.autosave) autosave();
     this.showDialogue('The Elder Caster', [
       "Igodomigodo — the city of red walls. By night, the bronze still glows in the casters' pits.",
       "You are ADESUA, Royal Bronze Caster. The Ogiso loyalists move in shadow, sharpening knives for Oba Ewuare before the Igue festival.",
       "The polished red walls hold secrets, Adesua. Cast the brass... but watch the shadows.",
     ], () => { _hide('menu'); window.startGame(); }); },
-  continueGame(){ if(window.Sound){ Sound.resume(); Sound.click(); Sound.startAmbient(); } GameState.apply(this._saved); _hide('menu'); window.startGame(); },
+  continueGame(){ if(window.Sound){ Sound.resume(); Sound.click(); Sound.startAmbient(); } if(window.MOBILE && window.goFullscreen) goFullscreen(); GameState.apply(this._saved); _hide('menu'); window.startGame(); },
+  installApp(){ const e=window.__deferredInstall; if(e){ e.prompt(); e.userChoice && e.userChoice.finally(()=>{ window.__deferredInstall=null; const b=document.getElementById('install-btn'); if(b) b.classList.add('hidden'); }); } },
   _refreshContinue(){
     const btn=document.getElementById('continue-btn');
     if(window.GameSave) GameSave.load().then(d=>{
@@ -162,6 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('set-sens').addEventListener('input',e=>{ S().camSensitivity=e.target.value/100; document.getElementById('lbl-sens').textContent=e.target.value+'%'; if(window.__stealth&&__stealth.rig) __stealth.rig.sens=S().camSensitivity; S().save(); });
   document.querySelectorAll('.diff-btn').forEach(b=>b.addEventListener('click',()=>{ S().difficulty=b.dataset.diff; UI.syncSettingsUI(); if(window.__stealth&&__stealth.applyDifficulty) __stealth.applyDifficulty(); S().save(); }));
   document.getElementById('set-motion').addEventListener('change',e=>{ S().reduceMotion=e.target.checked; S().save(); });
+  const hapEl=document.getElementById('set-haptics');
+  if(hapEl) hapEl.addEventListener('change',e=>{ S().haptics=e.target.checked; S().save(); if(e.target.checked && window.Haptics) Haptics.tap(); });
+  const actEl=document.getElementById('btn-action');
+  if(actEl) actEl.addEventListener('pointerdown',(e)=>{ e.preventDefault(); if(window.__stealth) __stealth.doContextAction(); });
 
   window.addEventListener('keydown',(e)=>{
     const k=e.key.toLowerCase();
